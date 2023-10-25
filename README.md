@@ -27,4 +27,4 @@ Make sure to put the input data in the `data` folder.
 
 ### Running
 
-> python flex-metric-calc.py
+> python main.py
