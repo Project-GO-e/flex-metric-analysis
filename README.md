@@ -27,4 +27,4 @@ Make sure to put the input data in the `data` folder.
 
 ### Running
 
-> python main.py
+> python src/main.py
