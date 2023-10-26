@@ -9,17 +9,19 @@ from experiment_description import ExperimentDescription
 class ExperimentFilter():
 
     def __init__(self) -> None:
-        self.zipcodes = []
+        self.area_ids = []
         self.flex_window_durations = []
         self.cong_starts = []
         self.cong_durations = []
     
-    def with_zipcode(self, zipcode: str ) -> ExperimentFilter:
-        self.zipcodes.append(zipcode)
+    def with_area(self, area_id: str ) -> ExperimentFilter:
+        self.area_ids.append(area_id)
         return self
 
-    def with_zipcodes(self, zipcode: List[str] ) -> ExperimentFilter:
-        self.zipcodes.extend(zipcode)
+    def with_areas(self, aread_ids: List[str] ) -> ExperimentFilter:
+        if type(aread_ids) is not list:
+            raise AssertionError("Only use this method with list argument")
+        self.area_ids.extend(aread_ids)
         return self
 
     def with_flex_window_duration(self, flex_window_duration: int ) -> ExperimentFilter:
@@ -47,7 +49,7 @@ class ExperimentFilter():
         return self
     
     def passFilter(self, description: ExperimentDescription) -> bool:
-        return (description.get_congestion_zipcode() in self.zipcodes or len(self.zipcodes) == 0) and \
+        return (description.get_area() in self.area_ids or len(self.area_ids) == 0) and \
                 (description.get_flexwindow_duration() in self.flex_window_durations or len(self.flex_window_durations) == 0 ) and \
                 (description.get_congestion_start() in self.cong_starts or len(self.cong_starts) == 0 ) and \
                 (description.get_congestion_duration() in self.cong_durations or len(self.cong_durations) ==0)

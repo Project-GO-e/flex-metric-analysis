@@ -10,7 +10,8 @@ from dateutil import parser
 
 class DeviceType(Enum):
     EV = 1
-
+    HEAT_PUMP = 2
+    
     @classmethod
     def from_string(cls, device_type: str) -> DeviceType:
         return cls[device_type.upper()]
@@ -30,7 +31,7 @@ class ExperimentDescription():
         self.device_type = device_type
 
 
-    def get_congestion_zipcode(self) -> str:
+    def get_area(self) -> str:
         return self.name.split("_")[0].removeprefix("pc")
 
 

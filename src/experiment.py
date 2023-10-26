@@ -66,17 +66,22 @@ class Experiment:
 
 
     def get_congestion_zipcode(self) -> str:
-        return self.exp_des.get_congestion_zipcode()
+        return self.exp_des.get_area()
 
 
     def get_flex_metric(self, ptu: int) -> pd.Series:
         if len(self.__flex_metrics) == 0: self.calc()
         return self.__flex_metrics[ptu]
     
+    
+    def get_weighted_mean_flex_metrics(self) -> List[float] :
+        if len(self.__flex_metrics) == 0: self.calc()
+        return list(self.__mean_weighted_flex_metric.values())
+    
 
     def get_weighted_mean_flex_metric(self, ptu: int) -> float :
         if len(self.__flex_metrics) == 0: self.calc()
-        return self.__flex_metrics[ptu]
+        return self.__mean_weighted_flex_metric[ptu]
 
 
     def get_baseline(self, ptu: int) -> pd.Series:
