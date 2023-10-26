@@ -1,7 +1,20 @@
 
-from dateutil import parser
-from datetime import datetime
+from __future__ import annotations
+
 import re
+from datetime import datetime
+from enum import Enum
+
+from dateutil import parser
+
+
+class DeviceType(Enum):
+    EV = 1
+
+    @classmethod
+    def from_string(cls, device_type: str) -> DeviceType:
+        return cls[device_type.upper()]
+
 
 class ExperimentDescription():
 
@@ -11,9 +24,10 @@ class ExperimentDescription():
             raise AssertionError(f"Invalid experiment (file) name '{exp_name}'")
 
 
-    def __init__(self, expirement_name: str) -> None:
+    def __init__(self, expirement_name: str, device_type: DeviceType) -> None:
         ExperimentDescription.__validate_name(expirement_name)
         self.name = expirement_name
+        self.device_type = device_type
 
 
     def get_congestion_zipcode(self) -> str:
@@ -32,3 +46,5 @@ class ExperimentDescription():
         return int(self.name.split("_")[3].removeprefix("congestionduration"))
     
     
+    def get_device_type(self) -> DeviceType:
+        return self.device_type

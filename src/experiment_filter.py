@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 
 from datetime import datetime
 from typing import List
@@ -14,35 +14,35 @@ class ExperimentFilter():
         self.cong_starts = []
         self.cong_durations = []
     
-    def with_zipcode(self, zipcode: str ):
+    def with_zipcode(self, zipcode: str ) -> ExperimentFilter:
         self.zipcodes.append(zipcode)
         return self
 
-    def with_zipcodes(self, zipcode: List[str] ):
+    def with_zipcodes(self, zipcode: List[str] ) -> ExperimentFilter:
         self.zipcodes.extend(zipcode)
         return self
 
-    def with_flex_window_duration(self, flex_window_duration: int ):
+    def with_flex_window_duration(self, flex_window_duration: int ) -> ExperimentFilter:
         self.flex_window_durations.append(flex_window_duration)
         return self
 
-    def with_flex_window_durations(self, flex_window_durations: List[int] ):
+    def with_flex_window_durations(self, flex_window_durations: List[int] ) -> ExperimentFilter:
         self.flex_window_durations.extend(flex_window_durations)
         return self
 
-    def with_cong_start(self, cong_start: datetime ):
+    def with_cong_start(self, cong_start: datetime ) -> ExperimentFilter:
         self.cong_starts.append(cong_start)
         return self
 
-    def with_cong_starts(self, cong_starts: List[str] ):
+    def with_cong_starts(self, cong_starts: List[str] ) -> ExperimentFilter:
         self.cong_starts.extend(cong_starts)
         return self
 
-    def with_cong_duration(self, cong_duration: int ):
+    def with_cong_duration(self, cong_duration: int )-> ExperimentFilter:
         self.cong_durations.append(cong_duration)
         return self
 
-    def with_cong_durations(self, cong_duration: List[str] ):
+    def with_cong_durations(self, cong_duration: List[str] ) -> ExperimentFilter:
         self.cong_durations.extend(cong_duration)
         return self
     

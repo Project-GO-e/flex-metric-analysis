@@ -1,20 +1,28 @@
-import pandas as pd
 from datetime import datetime
 from pathlib import Path
-import numpy as np
 from typing import Dict, List
-from experiment_description import ExperimentDescription
+
+import numpy as np
+import pandas as pd
+
+from experiment_description import DeviceType, ExperimentDescription
 
 
 class Experiment:
     """
     Experiment class that contains data of baseline and shifted power profiles and calculates the flex metric.
-    The expirement only concerns data in the congestion period.
+    The expirement class only concerns data in the congestion period.
     """
 
 
-    def __init__(self, baseline: Path, shifted: Path) -> None:
-        self.exp_des = ExperimentDescription(baseline.stem)
+    def __init__(self, baseline: Path, shifted: Path, device_type: DeviceType) -> None:
+        """
+        Args:
+            baseline (Path): path where the baseline profiles csv file of a experiment is stored.
+            shifted (Path): path where the csv file of a experiment's shifted profilees is stored.
+        """
+
+        self.exp_des = ExperimentDescription(baseline.stem, device_type)
         # Consider using skiprows and nrows to only create dataframe for the congestion period.
         df_baseline = pd.read_csv(baseline, sep=';', decimal=',', index_col=0, parse_dates=True)
         ptu_duration = df_baseline.index[1] - df_baseline.index[0]
