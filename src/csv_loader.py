@@ -2,9 +2,9 @@
 
 from pathlib import Path, PurePath
 from time import time
-from typing import Dict
 
 from experiment import Experiment
+from experiment_container import ExperimentContainer
 from experiment_description import DeviceType, ExperimentDescription
 from experiment_filter import ExperimentFilter
 
@@ -16,7 +16,7 @@ class CsvLoader():
         self.shifted_dir = shifted_dir
 
 
-    def load_experiments(self, filter : ExperimentFilter) -> Dict[str, Experiment]:
+    def load_experiments(self, filter : ExperimentFilter) -> ExperimentContainer:
         all_experiments = {}
         missing_shifted_file = False
 
@@ -38,4 +38,4 @@ class CsvLoader():
         #Fast fail approach:
         if missing_shifted_file : exit(1)
         print(f"All experiments loaded successfully. Loading time: {round(time() - t)} seconds.")
-        return all_experiments
+        return ExperimentContainer(all_experiments)

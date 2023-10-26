@@ -3,9 +3,7 @@ from pathlib import Path
 from typing import Dict
 
 from csv_loader import CsvLoader
-from experiment import Experiment
-from experiment_container import ExperimentContainer
-from experiment_description import DeviceType
+from experiment import DeviceType
 from experiment_filter import ExperimentFilter
 from plotting import *
 
@@ -17,13 +15,14 @@ if __name__ == "__main__":
 
 
     load_filter = ExperimentFilter().with_area('46651').with_flex_window_duration(48).with_cong_durations([16, 20, 24])
-    all_experiments: Dict[str, Experiment] = CsvLoader(baselines_dir=Path(BASELINE_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments(load_filter)
+
+    all_experiments = CsvLoader(baselines_dir=Path(BASELINE_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments(load_filter)
     
-    data, metadata = ExperimentContainer(all_experiments).get_mean_flex_for_congestion_start(DeviceType.EV, ['46651'], 48, 16)
+    data, metadata = all_experiments.get_mean_flex_for_congestion_start(DeviceType.EV, ['46651'], 48, 16)
     
     plot_mean_flex_metric(data, metadata)
 
-    data, metadata = ExperimentContainer(all_experiments).get_mean_flex_for_duration(DeviceType.EV, ['46651'], 48, datetime(2020,6,3,17,45))
+    data, metadata = all_experiments.get_mean_flex_for_duration(DeviceType.EV, ['46651'], 48, datetime(2020,6,3,17,45))
     
     plot_mean_flex_metric(data, metadata)
 
@@ -34,5 +33,3 @@ if __name__ == "__main__":
 
     
     print("Done. Bye!")
-
-        

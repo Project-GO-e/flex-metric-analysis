@@ -110,7 +110,7 @@ def plot_multipe_percentile_and_mean(experiments: Dict[str, Experiment], percent
             if subplot_idx == 1: ax.set_ylabel('Power (W)')
             
             subplot_idx += 1
-            
+
         if not single_plot : fig_idx += 1
         
         Line, Label = ax.get_legend_handles_labels()
@@ -125,10 +125,9 @@ def plot_mean_flex_metric(data : pd.DataFrame, metadata: Metadata):
     # Displaying dataframe as an heatmap with diverging colourmap as RdYlBu 
     # The imshow command puts the rows to the y-axis, we want that on x-axis.
     plt.imshow(data.transpose(), cmap ="RdYlBu", vmin=0, vmax=1)
-    
+
     # Displaying a color bar to understand which color represents which range of data 
     plt.colorbar() 
-    
     plt.xticks(range(len(data)), data.index) 
     plt.xlabel(metadata.rows)
     plt.yticks(range(len(data.columns.values)), data.columns)
