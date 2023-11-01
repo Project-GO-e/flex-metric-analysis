@@ -1,4 +1,4 @@
-
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +25,11 @@ class ExperimentContainer():
 
     def __init__(self, experiments : Dict[str, Experiment]) -> None:
         self.exp = experiments
+
+
+    def filter(self, filter: ExperimentFilter) -> ExperimentContainer:
+        filtered_experiments = {k: v for k, v in self.exp.items() if filter.passFilter(v.exp_des)}
+        return ExperimentContainer(filtered_experiments)           
 
 
     def get_mean_flex_for_duration(self, device_type: DeviceType, area_ids: List[str], flex_window: int, cong_start: datetime) -> (pd.DataFrame, Metadata):
