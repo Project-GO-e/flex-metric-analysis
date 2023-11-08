@@ -2,9 +2,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
-from csv_loader import CsvLoader
 from experiment_description import DeviceType
 from experiment_filter import ExperimentFilter
+from experiment_loader import FileLoader
 from plotting import *
 
 BASELINE_DIR='data/ev/baseline/'
@@ -14,16 +14,16 @@ SHIFTED_DIR='data/ev/shifted/'
 if __name__ == "__main__":
 
 
-    load_filter = ExperimentFilter().with_area('46651').with_flex_window_duration(48).with_cong_durations([16, 20, 24])
+    load_filter = ExperimentFilter().with_area('46651').with_flex_window_duration(48).with_cong_durations([16])
 
-    all_experiments = CsvLoader(baselines_dir=Path(BASELINE_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments()
+    all_experiments = FileLoader(baselines_dir=Path(BASELINE_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments(load_filter)
     
     
-    plot = Plotting()
+    # plot = Plotting()
     
-    data = all_experiments.get_mean_flex_for_time_of_day(DeviceType.EV, ['46651'], 48)
+    # data = all_experiments.get_mean_flex_for_time_of_day(DeviceType.EV, ['46651'], 48)
     
-    plot.flex_metric_histogram(data)
+    # plot.flex_metric_histogram(data)
     
     
     
@@ -39,6 +39,6 @@ if __name__ == "__main__":
     
     # plot.plot_multipe_percentile_and_mean(all_experiments.filter(ExperimentFilter().with_cong_start(datetime(2020,6,3,17,45))), 95)
     
-    plot.show()
+    # plot.show()
     
     print("Done. Bye!")
