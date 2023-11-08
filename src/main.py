@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict
 
 from csv_loader import CsvLoader
-from experiment import DeviceType
+from experiment_description import DeviceType
 from experiment_filter import ExperimentFilter
 from plotting import *
 
@@ -39,6 +39,6 @@ if __name__ == "__main__":
     
     # plot.plot_multipe_percentile_and_mean(all_experiments.filter(ExperimentFilter().with_cong_start(datetime(2020,6,3,17,45))), 95)
     
-    # plot.show()
+    plot.show()
     
     print("Done. Bye!")
