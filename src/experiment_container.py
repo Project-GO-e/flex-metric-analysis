@@ -34,12 +34,11 @@ class ExperimentContainer():
 
     def get_mean_flex_for_duration(self, device_type: DeviceType, area_ids: List[str], flex_window: int, cong_start: datetime) -> (pd.DataFrame, Metadata):
         exp_filter = ExperimentFilter().with_areas(area_ids).with_flex_window_duration(flex_window).with_cong_start(cong_start)
-        data :Dict[datetime, List[float] ] = {}
+        data: Dict[datetime, List[float] ] = {}
         max_length = 0
-        for exp in self.exp.values():
-            if exp_filter.passFilter(exp.exp_des):
-                data[exp.get_congestion_duration()] = exp.get_weighted_mean_flex_metrics()
-                max_length = exp.get_congestion_duration() if exp.get_congestion_duration() > max_length else max_length
+        for exp in filter(lambda e: exp_filter.passFilter(e.exp_des), self.exp.values()):
+            data[exp.get_congestion_duration()] = exp.get_weighted_mean_flex_metrics()
+            max_length = exp.get_congestion_duration() if exp.get_congestion_duration() > max_length else max_length
         for exp in data:
             data[exp] += (max_length - len(data[exp])) * [np.NaN]
         data = dict(sorted(data.items()))
@@ -48,7 +47,7 @@ class ExperimentContainer():
 
     def get_mean_flex_for_congestion_start(self, device_type: DeviceType, area_ids: List[str], flex_window: int, cong_duration: int) -> (pd.DataFrame, Metadata):
         exp_filter = ExperimentFilter().with_areas(area_ids).with_flex_window_duration(flex_window).with_cong_duration(cong_duration)
-        data :Dict[datetime, List[float] ] = {}
+        data: Dict[datetime, List[float] ] = {}
         for exp in self.exp.values():
             if exp_filter.passFilter(exp.exp_des):
                 data[exp.get_congestion_start()] =  exp.get_weighted_mean_flex_metrics()
@@ -58,7 +57,7 @@ class ExperimentContainer():
 
     def get_mean_flex(self, device_tpe: DeviceType, area_ids: List[str], flex_window: int) -> List[float]:
         exp_filter = ExperimentFilter().with_areas(area_ids).with_flex_window_duration(flex_window)
-        data : List[float] = []
+        data: List[float] = []
         for exp in self.exp.values():
             if exp_filter.passFilter(exp.exp_des):
                 data.extend(exp.get_weighted_mean_flex_metrics())

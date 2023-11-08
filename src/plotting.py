@@ -13,8 +13,8 @@ from experiment_container import ExperimentContainer, Metadata
 
 class Plotting():
 
-    def __init__(self) -> None:
-        self.interactive: bool = False
+    def __init__(self, block_on_plot: bool = False) -> None:
+        self.block_on_plot = block_on_plot
         self.figure_cnt: int = 1
         
 
@@ -32,9 +32,8 @@ class Plotting():
         plt.scatter(exp.get_baseline(ptu), exp.get_flex_metric(ptu))
         plt.xlabel('Power (W)')
         plt.ylabel('Flex metric')
-        plt.title(f"P-f, {__format_exp_name(exp)}, PTU: {ptu + 1}")
-        if self.interactive:
-            plt.show()
+        plt.title(f"P-f, {__format_exp_name(exp)}, PTU: {ptu + 1}")   
+        plt.show(block=self.block_on_plot)
 
 
     def plot_mean_baseline_and_shifted(self, exp: Experiment):
@@ -45,8 +44,7 @@ class Plotting():
         plt.xlabel('PTU')
         plt.ylabel('Power (W)')
         plt.title(f"Mean Power {__format_exp_name(exp.exp_des)} ")
-        if self.interactive:
-            plt.show()
+        plt.show(block=self.block_on_plot)
 
 
     def plot_sum_baseline_and_shifted(self, exp: Experiment):
@@ -57,8 +55,7 @@ class Plotting():
         plt.xlabel('PTU')
         plt.ylabel('Power (W)')
         plt.title(f"Summed Power {__format_exp_name(exp.exp_des)} ")
-        if self.interactive:
-            plt.show()
+        plt.show(block=self.block_on_plot)
 
 
     def plot_percentile_baseline_and_shifted(self, exp: Experiment, percentile):
@@ -77,11 +74,12 @@ class Plotting():
         plt.xlabel('PTU')
         plt.ylabel('Power (W)')
         plt.title(f"P{percentile} Power, {__format_exp_name(exp.exp_des)}")
-        if self.interactive:
-            plt.show()
+        plt.show(block=self.block_on_plot)
 
 
     def plot_multipe_percentile_and_mean(self, experiments: ExperimentContainer, percentile: int):
+        if len(experiments.exp) == 0:
+            raise AssertionError("No experiment data to plot")
         exp_per_cong_start :Dict[str, Experiment] = {}
 
         for e in experiments.exp.values():
@@ -94,8 +92,7 @@ class Plotting():
         subfigs = fig.subfigures(nrows=nrows, ncols=1)
 
         # UGLY! Apperently the return type of subfigures depends on the dimension of subfigures.
-        if not type(subfigs) is np.ndarray:
-            subfigs = [subfigs]
+        if not type(subfigs) is np.ndarray: subfigs = [subfigs]
         
         for cong_start in exp_per_cong_start:
             ax = None
@@ -103,7 +100,10 @@ class Plotting():
             subfigs[int(subplot_idx / cols)].suptitle(f"Congestion start: {cong_start}")
             subfigs[int(subplot_idx / cols)].subplots_adjust(top=0.8)
             axs = subfigs[int(subplot_idx / cols)].subplots(nrows=1, ncols=cols)
-              
+            
+            # UGLY! Apperently the return type of subplots depends on the dimension of subfigures.
+            if not type(axs) is np.ndarray: axs = [axs]
+
             for exp in sorted(exp_per_cong_start[cong_start], key=lambda x: x.get_congestion_duration()):
                 ax = axs[subplot_idx % cols]
                 ptus = range(exp.get_congestion_duration())
@@ -133,8 +133,7 @@ class Plotting():
 
             Line, Label = ax.get_legend_handles_labels()
             fig.legend(Line, Label) 
-        if self.interactive:
-            plt.show()
+        plt.show(block=self.block_on_plot)
 
 
     def plot_mean_flex_metric(self, data : pd.DataFrame, metadata: Metadata):
@@ -152,20 +151,22 @@ class Plotting():
         plt.xlabel(metadata.rows)
         plt.yticks(range(len(data.columns.values)), data.columns)
         plt.ylabel(metadata.colums)
-        if self.interactive:
-            plt.show()
+        plt.show(block=self.block_on_plot)
 
     def flex_metric_histogram(self, flex_metrics: Dict[datetime, List[float]]):
         
         flex_metric_keys = sorted(flex_metrics.keys())
-        fig, axes = plt.subplots(1, 6)
-        for plot_idx, key_idx in enumerate(range(0, 24, 4)):
-            ptu = flex_metric_keys[key_idx + 24]
-            df = pd.DataFrame(flex_metrics[ptu])
-            df.hist(ax=axes[plot_idx], range=[0,1], bins=20)
-            axes[plot_idx].set_title(str(ptu))
-        if self.interactive:
-            plt.show(block=True)
+        
+        for idx in range(4):
+            
+            fig, axes = plt.subplots(1, 6)
+            for plot_idx, key_idx in enumerate(range(0, 24, 4)):
+                ptu = flex_metric_keys[key_idx + idx*24]
+                df = pd.DataFrame(flex_metrics[ptu])
+                df.hist(ax=axes[plot_idx], range=[0,1], bins=20)
+                axes[plot_idx].set_title(str(ptu))
+            plt.show(block=self.block_on_plot)
+            self.figure_cnt += 1
 
 
 def __format_exp_name(exp) -> str:
