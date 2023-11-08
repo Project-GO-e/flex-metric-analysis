@@ -21,7 +21,7 @@ class ExperimentDescription():
 
     @staticmethod
     def validate_name(exp_name: str) -> bool:
-        return re.fullmatch("pc\d{5}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$", exp_name)
+        return re.fullmatch("pc4\d{4}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$", exp_name)
 
 
     def __init__(self, expirement_name: str, device_type: DeviceType) -> None:
@@ -32,7 +32,7 @@ class ExperimentDescription():
 
 
     def get_area(self) -> str:
-        return self.name.split("_")[0].removeprefix("pc")
+        return self.name.split("_")[0].removeprefix("pc4")
 
 
     def get_flexwindow_duration(self) -> datetime:
