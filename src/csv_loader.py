@@ -16,7 +16,7 @@ class CsvLoader():
         self.shifted_dir = shifted_dir
 
 
-    def load_experiments(self, filter : ExperimentFilter) -> ExperimentContainer:
+    def load_experiments(self, filter : ExperimentFilter = ExperimentFilter()) -> ExperimentContainer:
         all_experiments = {}
         missing_shifted_file = False
 

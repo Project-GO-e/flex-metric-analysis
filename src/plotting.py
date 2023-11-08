@@ -1,4 +1,5 @@
-from typing import Dict
+from datetime import datetime
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import matplotlib.table as tbl
@@ -153,6 +154,18 @@ class Plotting():
         plt.ylabel(metadata.colums)
         if self.interactive:
             plt.show()
+
+    def flex_metric_histogram(self, flex_metrics: Dict[datetime, List[float]]):
+        
+        flex_metric_keys = sorted(flex_metrics.keys())
+        fig, axes = plt.subplots(1, 6)
+        for plot_idx, key_idx in enumerate(range(0, 24, 4)):
+            ptu = flex_metric_keys[key_idx + 24]
+            df = pd.DataFrame(flex_metrics[ptu])
+            df.hist(ax=axes[plot_idx], range=[0,1], bins=20)
+            axes[plot_idx].set_title(str(ptu))
+        if self.interactive:
+            plt.show(block=True)
 
 
 def __format_exp_name(exp) -> str:

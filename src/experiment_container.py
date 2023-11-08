@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List
 
 import numpy as np
@@ -56,5 +56,22 @@ class ExperimentContainer():
         return pd.DataFrame(data), Metadata("PTU", "Congestion start times", area_ids, flex_window, device_type)
     
 
-    def get_mean_flex(self, device_tpe: DeviceType, area_id: List[str], flex_window: int) -> (pd.DataFrame, Metadata):
-        pass
+    def get_mean_flex(self, device_tpe: DeviceType, area_ids: List[str], flex_window: int) -> List[float]:
+        exp_filter = ExperimentFilter().with_areas(area_ids).with_flex_window_duration(flex_window)
+        data : List[float] = []
+        for exp in self.exp.values():
+            if exp_filter.passFilter(exp.exp_des):
+                data.extend(exp.get_weighted_mean_flex_metrics())
+        return data
+    
+
+    def get_mean_flex_for_time_of_day(self, device_tpe: DeviceType, area_ids: List[str], flex_window: int) -> Dict[datetime, List[float]]:
+        exp_filter = ExperimentFilter().with_areas(area_ids).with_flex_window_duration(flex_window)
+        data : Dict[datetime, List[float]] = {}
+        for exp in self.exp.values():
+            if exp_filter.passFilter(exp.exp_des):
+                metric_per_ptu = exp.get_weighted_mean_flex_metrics()
+                for i in range(exp.get_congestion_duration()):
+                    l = data.setdefault(exp.get_congestion_start() + timedelta(minutes=15) * i, [])
+                    l.append(metric_per_ptu[i])
+        return data
