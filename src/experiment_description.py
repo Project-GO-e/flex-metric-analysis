@@ -20,13 +20,13 @@ class DeviceType(Enum):
 class ExperimentDescription():
 
     @staticmethod
-    def __validate_name(exp_name: str):
-        if not re.fullmatch("pc\d{5}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$", exp_name):
-            raise AssertionError(f"Invalid experiment (file) name '{exp_name}'")
+    def validate_name(exp_name: str) -> bool:
+        return re.fullmatch("pc\d{5}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$", exp_name)
 
 
     def __init__(self, expirement_name: str, device_type: DeviceType) -> None:
-        ExperimentDescription.__validate_name(expirement_name)
+        if not ExperimentDescription.validate_name(expirement_name):
+            raise AssertionError(f"Invalid experiment (file) name '{expirement_name}'")
         self.name = expirement_name
         self.device_type = device_type
 
