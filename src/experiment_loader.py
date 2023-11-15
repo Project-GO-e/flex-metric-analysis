@@ -17,9 +17,9 @@ class FileLoader():
         if not any(baselines_dir.iterdir()):
             raise AssertionError(f"Baselines directory '{baselines_dir}' is empty")
         if not shifted_dir.exists():
-            raise AssertionError(f"Baselines directory '{shifted_dir}' does not exist")
+            raise AssertionError(f"Shifted directory '{shifted_dir}' does not exist")
         if not any(shifted_dir.iterdir()):
-            raise AssertionError(f"Baselines directory '{shifted_dir}' is empty")
+            raise AssertionError(f"Shifted directory '{shifted_dir}' is empty")
         self.baselines_dir = baselines_dir
         self.shifted_dir = shifted_dir
         
@@ -64,4 +64,4 @@ class FileLoader():
         return pd.read_csv(path, sep=';', decimal=',', index_col=0, parse_dates=True)
     
     def __load_parquet_file(path: Path) -> pd.DataFrame:
-        raise NotImplementedError("todo")
+        return pd.read_parquet(path)

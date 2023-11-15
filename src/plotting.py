@@ -153,12 +153,11 @@ class Plotting():
         plt.ylabel(metadata.colums)
         plt.show(block=self.block_on_plot)
 
-    def flex_metric_histogram(self, flex_metrics: Dict[datetime, List[float]]):
-        
+
+    def flex_metric_histogram(self, flex_metrics: Dict[datetime, List[float]]):        
         flex_metric_keys = sorted(flex_metrics.keys())
         
         for idx in range(4):
-            
             fig, axes = plt.subplots(1, 6)
             for plot_idx, key_idx in enumerate(range(0, 24, 4)):
                 ptu = flex_metric_keys[key_idx + idx*24]
