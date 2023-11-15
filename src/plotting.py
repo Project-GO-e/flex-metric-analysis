@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 from experiment import Experiment
-from experiment_container import ExperimentContainer, Metadata
+from experiment_container import ExperimentContainer
+from experiment_filter import ExperimentFilter
 
 
 class Plotting():
@@ -136,25 +137,69 @@ class Plotting():
         plt.show(block=self.block_on_plot)
 
 
-    def plot_mean_flex_metric(self, data : pd.DataFrame, metadata: Metadata):
-        if len(data.columns) == 0:
+    def flex_metric_heat_map_for_cong_start(self, container: ExperimentContainer, cong_start: datetime):
+        data = container.filter(ExperimentFilter().with_cong_start(cong_start)).get_mean_flex_per_duration_per_ptu()
+        df = pd.DataFrame(data).map(np.mean).transpose()
+        
+        if len(df.columns) == 0:
             raise AssertionError("No data. Cannot make plot.")
         self.__create_figure()
-        # data.to_csv('out.csv')
+
         # Displaying dataframe as an heatmap with diverging colourmap as RdYlBu 
         # The imshow command puts the rows to the y-axis, we want that on x-axis.
-        plt.imshow(data.transpose(), cmap ="RdYlBu", vmin=0, vmax=1)
+        plt.imshow(df, cmap ="RdYlBu", vmin=0, vmax=1)
 
         # Displaying a color bar to understand which color represents which range of data 
         plt.colorbar() 
-        plt.xticks(range(len(data)), data.index) 
-        plt.xlabel(metadata.rows)
-        plt.yticks(range(len(data.columns.values)), data.columns)
-        plt.ylabel(metadata.colums)
+        plt.title(f"{' ,'.join(container.get_areas())} - {cong_start}")
+        plt.xticks(range(len(df.columns.values)), df.columns)
+        plt.xlabel("PTU")
+        plt.yticks(range(len(df)), df.index) 
+        plt.ylabel("duration")
         plt.show(block=self.block_on_plot)
 
 
-    def flex_metric_histogram(self, flex_metrics: Dict[datetime, List[float]]):        
+    def flex_metric_heat_map_for_duration(self, container: ExperimentContainer, duration: int):
+        data = container.filter(ExperimentFilter().with_cong_duration(duration)).get_mean_flex_per_congestion_start_per_ptu()
+        df = pd.DataFrame(data).map(np.mean).transpose()
+        
+        if len(df.columns) == 0:
+            raise AssertionError("No data. Cannot make plot.")
+        self.__create_figure()
+
+        # Displaying dataframe as an heatmap with diverging colourmap as RdYlBu 
+        # The imshow command puts the rows to the y-axis, we want that on x-axis.
+        plt.imshow(df, cmap ="RdYlBu", vmin=0, vmax=1)
+
+        # Displaying a color bar to understand which color represents which range of data 
+        plt.colorbar() 
+        plt.title(f"{' ,'.join(container.get_areas())} - {duration}")
+        plt.xticks(range(len(df.columns.values)), df.columns)
+        plt.xlabel("PTU")
+        plt.yticks(range(len(df)), df.index) 
+        plt.ylabel("duration")
+        plt.show(block=self.block_on_plot)
+
+
+    def flex_metric_histogram(self, container: ExperimentContainer):
+        self.__create_figure()
+        flex_metrics = pd.Series(container.get_mean_flex())
+        plt.hist(flex_metrics)
+        plt.title(f"Mean weighted flex metric. {round(flex_metrics.mean(),2)}, {round(flex_metrics.std(),2)}")
+        plt.show(block=self.block_on_plot)
+
+
+    def flex_metric_histogram_per_duration(self, container: ExperimentContainer):
+        fig = self.__create_figure()
+        flex_metrics_per_duration = container.get_mean_flex_per_duration()
+        axes = fig.subplots(1, len(flex_metrics_per_duration))
+        for idx, duration in enumerate(flex_metrics_per_duration):
+            pd.DataFrame(flex_metrics_per_duration[duration]).hist(ax=axes[idx], range=[0,1], bins=20)
+            axes[idx].set_title(str(duration))
+        plt.show(block=self.block_on_plot)
+
+    def flex_metric_histogram_per_time_of_day(self, container: ExperimentContainer):
+        flex_metrics = container.get_mean_flex_for_time_of_day()
         flex_metric_keys = sorted(flex_metrics.keys())
         
         for idx in range(4):
