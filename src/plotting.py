@@ -184,7 +184,7 @@ class Plotting():
     def flex_metric_histogram(self, container: ExperimentContainer):
         self.__create_figure()
         flex_metrics = pd.Series(container.get_mean_flex())
-        plt.hist(flex_metrics)
+        plt.hist(flex_metrics, range=[0,1])
         plt.title(f"Mean weighted flex metric. {round(flex_metrics.mean(),2)}, {round(flex_metrics.std(),2)}")
         plt.show(block=self.block_on_plot)
 

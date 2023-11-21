@@ -30,11 +30,13 @@ class FileLoader():
         device_type = DeviceType.from_string(PurePath(self.baselines_dir).parts[-2])
         print(f"Loading experiments from files...")
         t = time()
-        
+        cnt_checked = 0
         experiments = filter(lambda e: ExperimentDescription.validate_name(e.stem), self.baselines_dir.iterdir())
         for exp_path in experiments:
             description = ExperimentDescription(exp_path.stem, device_type)
-            
+            if cnt_checked % 50 == 0:
+                print(f"Loaded {len(all_experiments)} / {cnt_checked} experiments.")
+            cnt_checked += 1
             if experiment_filter.passFilter(description):                    
                 shifted_path = self.shifted_dir / exp_path.name
                 try:

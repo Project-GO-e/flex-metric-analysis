@@ -17,8 +17,8 @@ class Experiment:
     def __init__(self, baseline: pd.DataFrame, shifted: pd.DataFrame, experiment_description: ExperimentDescription) -> None:
         """
         Args:
-            baseline (Path): path where the baseline profiles csv file of a experiment is stored.
-            shifted (Path): path where the csv file of a experiment's shifted profilees is stored.
+            baseline: pandas dataframe with the baseline profiles of a experiment.
+            shifted: pandas datafram of a experiment's shifted profiles.
         """
 
         self.exp_des = experiment_description
