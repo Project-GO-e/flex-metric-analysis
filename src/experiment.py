@@ -4,6 +4,7 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
+from db.flex_metrics import FlexMetrics
 from experiment_description import ExperimentDescription
 
 
@@ -18,7 +19,7 @@ class Experiment:
         """
         Args:
             baseline: pandas dataframe with the baseline profiles of a experiment.
-            shifted: pandas datafram of a experiment's shifted profiles.
+            shifted: pandas dataframe of a experiment's shifted profiles.
         """
 
         self.exp_des = experiment_description
@@ -106,3 +107,21 @@ class Experiment:
     def get_num_active_baseline_devices(self, ptu: int) -> int:
         if len(self.__baseline_wo_zeros) == 0: self.calc()
         return self.__baseline_wo_zeros[ptu].count()
+
+
+    def to_db_object(self) -> FlexMetrics:
+        baseline = ','.join(map(lambda x: str(x), self.__baseline.mean(axis=1)))
+        flex_metric = ','.join(map(lambda x: str(x), self.get_weighted_mean_flex_metrics()))
+        baseline_wo_zero_list = []
+        for ptu in self.__baseline_wo_zeros:
+            baseline_wo_zero_list.append(self.__baseline_wo_zeros[ptu].mean())
+        
+        baseline_wo_zero = ','.join(map(lambda x: str(x), baseline_wo_zero_list))
+        return FlexMetrics(id=self.exp_des.name, 
+                            cong_start=self.exp_des.congestion_start,
+                            cong_duration=self.exp_des.congestion_duration,
+                            asset_type=str(self.exp_des.device_type), 
+                            area=self.exp_des.area, 
+                            baseline=baseline,
+                            flex_metric=flex_metric,
+                            baseline_non_zero=baseline_wo_zero)

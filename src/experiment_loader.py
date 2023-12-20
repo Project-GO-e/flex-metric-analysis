@@ -65,5 +65,6 @@ class FileLoader():
         # Consider using skiprows and nrows to only create dataframe for the congestion period.
         return pd.read_csv(path, sep=';', decimal=',', index_col=0, parse_dates=True)
     
+    
     def __load_parquet_file(path: Path) -> pd.DataFrame:
         return pd.read_parquet(path)
