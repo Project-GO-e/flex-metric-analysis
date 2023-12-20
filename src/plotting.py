@@ -177,15 +177,15 @@ class Plotting():
         plt.xticks(range(len(df.columns.values)), df.columns)
         plt.xlabel("PTU")
         plt.yticks(range(len(df)), df.index) 
-        plt.ylabel("duration")
+        plt.ylabel("Cong. start")
         plt.show(block=self.block_on_plot)
 
 
     def flex_metric_histogram(self, container: ExperimentContainer):
         self.__create_figure()
-        flex_metrics = pd.Series(container.get_mean_flex())
+        flex_metrics: pd.Series = pd.Series(container.get_mean_flex())
         plt.hist(flex_metrics, range=[0,1])
-        plt.title(f"Mean weighted flex metric. {round(flex_metrics.mean(),2)}, {round(flex_metrics.std(),2)}")
+        plt.title(f"Mean weighted flex metric. {round(flex_metrics.mean(),2)}, {round(flex_metrics.std(),2)}, {round(np.percentile(container.get_mean_flex(), 10),2)}")
         plt.show(block=self.block_on_plot)
 
 
@@ -201,14 +201,14 @@ class Plotting():
     def flex_metric_histogram_per_time_of_day(self, container: ExperimentContainer):
         flex_metrics = container.get_mean_flex_for_time_of_day()
         flex_metric_keys = sorted(flex_metrics.keys())
-        
-        for idx in range(4):
-            fig, axes = plt.subplots(1, 6)
-            for plot_idx, key_idx in enumerate(range(0, 24, 4)):
-                ptu = flex_metric_keys[key_idx + idx*24]
+        PLOTS_PER_FIG = 6
+        for idx in range(int(len(flex_metric_keys) / PLOTS_PER_FIG) + 1):
+            fig, axes = plt.subplots(1, min(PLOTS_PER_FIG, len(flex_metric_keys) - idx * PLOTS_PER_FIG))
+            for plot_idx, ax in enumerate(axes):
+                ptu = flex_metric_keys[plot_idx + idx * PLOTS_PER_FIG]
                 df = pd.DataFrame(flex_metrics[ptu])
-                df.hist(ax=axes[plot_idx], range=[0,1], bins=20)
-                axes[plot_idx].set_title(str(ptu))
+                df.hist(ax=ax, range=[0,1], bins=20)
+                ax.set_title(str(ptu))
             plt.show(block=self.block_on_plot)
             self.figure_cnt += 1
 
