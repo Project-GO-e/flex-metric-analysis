@@ -28,13 +28,13 @@ class Plotting():
         return plt.figure(self.figure_cnt - 1, **kwargs)
 
 
-    def plot_p_f(self, exp: Experiment, ptu: int):
-        self.__create_figure()
-        plt.scatter(exp.get_baseline(ptu), exp.get_flex_metric(ptu))
-        plt.xlabel('Power (W)')
-        plt.ylabel('Flex metric')
-        plt.title(f"P-f, {__format_exp_name(exp)}, PTU: {ptu + 1}")   
-        plt.show(block=self.block_on_plot)
+    # def plot_p_f(self, exp: Experiment, ptu: int):
+    #     self.__create_figure()
+    #     plt.scatter(exp.get_baseline(ptu), exp.get_flex_metric(ptu))
+    #     plt.xlabel('Power (W)')
+    #     plt.ylabel('Flex metric')
+    #     plt.title(f"P-f, {__format_exp_name(exp)}, PTU: {ptu + 1}")   
+    #     plt.show(block=self.block_on_plot)
 
 
     def plot_mean_baseline_and_shifted(self, exp: Experiment):

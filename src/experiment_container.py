@@ -22,7 +22,7 @@ class ExperimentContainer():
         data: Dict[int, List[float] ] = {}
         for exp in self.exp.values():
             flex_metrics = data.setdefault(exp.get_congestion_duration(), [])
-            flex_metrics.extend(exp.get_weighted_mean_flex_metrics())
+            flex_metrics.extend(exp.get_weighted_mean_flex_metrics().to_numpy())
         return dict(sorted(data.items()))
     
 
@@ -40,7 +40,7 @@ class ExperimentContainer():
         data: Dict[datetime, List[float] ] = {}
         for exp in self.exp.values():
             flex_metrics = data.setdefault(exp.get_congestion_start(), [])
-            flex_metrics.extend(exp.get_weighted_mean_flex_metrics())
+            flex_metrics.extend(exp.get_weighted_mean_flex_metrics().to_numpy())
         return dict(sorted(data.items()))
     
 
@@ -58,23 +58,23 @@ class ExperimentContainer():
         data: Dict[str, List[float] ] = {}
         for exp in self.exp.values():
             flex_metrics = data.setdefault(exp.exp_des.get_area(), [])
-            flex_metrics.extend(exp.get_weighted_mean_flex_metrics())
+            flex_metrics.extend(exp.get_weighted_mean_flex_metrics().to_numpy())
         return data
     
 
     def get_mean_flex(self) -> List[float]:
         data: List[float] = []
         for exp in self.exp.values():
-            data.extend(exp.get_weighted_mean_flex_metrics())
+            data.extend(exp.get_weighted_mean_flex_metrics().to_numpy())
         return data
     
 
     def get_mean_flex_for_time_of_day(self) -> Dict[datetime, List[float]]:
         data : Dict[datetime, List[float]] = {}
         for exp in self.exp.values():
-            metric_per_ptu = exp.get_weighted_mean_flex_metrics()
+            metric_per_ptu = exp.get_weighted_mean_flex_metrics().to_numpy()
             for i in range(exp.get_congestion_duration()):
-                l = data.setdefault(exp.get_congestion_start() + timedelta(minutes=15) * i, [])
+                l = data.setdefault(exp.get_congestion_start() + exp.ptu_duration * i, [])
                 l.append(metric_per_ptu[i])
         return data
     
