@@ -42,7 +42,7 @@ class Experiment:
 
 
     def get_congestion_zipcode(self) -> str:
-        return self.exp_des.get_area()
+        return self.exp_des.get_group()
     
     
     def get_weighted_mean_flex_metrics(self) -> pd.DataFrame:
@@ -53,26 +53,18 @@ class Experiment:
         return self.__mean_weighted_flex_metric[self.exp_des.congestion_start + self.ptu_duration * ptu]
 
 
-    # TODO: fix
-    # def get_baseline(self, ptu: int) -> pd.Series:
-    #     """Return the baseline power for a PTU of all devices that are non-zero in the baseline"""
-    #     for ptu_idx in range(self.get_congestion_duration()):
-    #       mask = self.__baseline.iloc[ptu_idx] != 0.0
-    #       baselines_wo_zeros = self.__baseline.iloc[ptu_idx][mask.values]
-    #     return 0
-
-
     def get_baseline_profiles(self) -> pd.DataFrame:
         """Return the baseline power for all PTU of all devices"""
         return self.__baseline
 
+    def get_baseline(self, ptu: int) -> pd.Series:
+        """Return the baseline power of all devices"""
+        return self.__baseline.iloc[ptu]
 
-    # TODO: fix
-    # def get_shifted(self, ptu: int) -> pd.Series:
-    #     """Return the power after flex optimalization of all devices that are non-zero in the baseline"""
-    #     # mask = self.__baseline.iloc[ptu_idx] != 0.0
-    #     # baselines_wo_zeros = self.__baseline.iloc[ptu_idx][mask.values]
-    #     return self.__shifted_wo_zeros[ptu]
+    
+    def get_shifted(self, ptu: int) -> pd.Series:
+        """Return the power after flex optimalization of all devices"""
+        return self.__shifted.iloc[ptu]
     
 
     def get_shifted_profiles(self) -> pd.DataFrame:
@@ -81,25 +73,22 @@ class Experiment:
 
 
     def get_num_active_baseline_devices(self, ptu: int) -> int:
-        # TODO: fix
-        # mask = self.__baseline.iloc[ptu_idx] != 0.0
-        # baselines_wo_zeros = self.__baseline.iloc[ptu_idx][mask.values]
-        return self.__baseline_wo_zeros[ptu].count()
-
+        mask = self.__baseline.iloc[ptu] != 0.0
+        return self.__baseline.iloc[ptu][mask.values].count()
 
     def to_db_object(self) -> FlexMetrics:
         baseline = ','.join(map(lambda x: str(x), self.__baseline.mean(axis=1)))
         flex_metric = ','.join(map(lambda x: str(x), self.get_weighted_mean_flex_metrics()))
-        baseline_wo_zero_list = []
-        for ptu in self.__baseline_wo_zeros:
-            baseline_wo_zero_list.append(self.__baseline_wo_zeros[ptu].mean())
+        # baseline_wo_zero_list = []
+        # for ptu in self.__baseline_wo_zeros:
+        #     baseline_wo_zero_list.append(self.__baseline_wo_zeros[ptu].mean())
         
-        baseline_wo_zero = ','.join(map(lambda x: str(x), baseline_wo_zero_list))
+        # baseline_wo_zero = ','.join(map(lambda x: str(x), baseline_wo_zero_list))
         return FlexMetrics(id=self.exp_des.name, 
                             cong_start=self.exp_des.congestion_start,
                             cong_duration=self.exp_des.congestion_duration,
                             asset_type=str(self.exp_des.device_type), 
-                            area=self.exp_des.area, 
+                            area=self.exp_des.group, 
                             baseline=baseline,
-                            flex_metric=flex_metric,
-                            baseline_non_zero=baseline_wo_zero)
+                            flex_metric=flex_metric)
+                            # baseline_non_zero=baseline_wo_zero)

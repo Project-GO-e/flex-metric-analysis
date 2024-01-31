@@ -10,7 +10,7 @@ from dateutil import parser
 
 class DeviceType(Enum):
     EV = 1
-    HEAT_PUMP = 2
+    HP = 2
     
     @classmethod
     def from_string(cls, device_type: str) -> DeviceType:
@@ -19,15 +19,16 @@ class DeviceType(Enum):
 
 class ExperimentDescription():
 
-    v1_regex ="pc4\d{4}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$"
-    v2_regex = "pc4\d{4}_flexwindowstart\d{4}-\d{2}-\d{2}T\d{4}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$"
-    #E.g., pc41077_flexwindowstart2020-06-03T0100_flexwindowduration96_congestionstart2020-06-03T0700_congestionduration4
+    ev_regex_v1 ="pc4\d{4}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$"
+    ev_regex_v2 = "pc4\d{4}_flexwindowstart\d{4}-\d{2}-\d{2}T\d{4}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$"
+    hp_regex = ".*_flexwindowstart\d{4}-\d{2}-\d{2}T\d{4}_flexwindowduration\d*_congestionstart[^_]*_congestionduration\d*$"
 
     @staticmethod
     def validate_name(exp_name: str) -> bool:
-        v1_pattern = re.fullmatch(ExperimentDescription.v1_regex, exp_name)
-        v2_pattern = re.fullmatch(ExperimentDescription.v2_regex, exp_name)
-        return v1_pattern or v2_pattern
+        v1_match = re.fullmatch(ExperimentDescription.ev_regex_v1, exp_name)
+        v2_match = re.fullmatch(ExperimentDescription.ev_regex_v2, exp_name)
+        hp_match = re.fullmatch(ExperimentDescription.hp_regex, exp_name)
+        return v1_match or v2_match or hp_match
 
 
     def __init__(self, expirement_name: str, device_type: DeviceType) -> None:
@@ -39,18 +40,21 @@ class ExperimentDescription():
 
 
     def parse_experiment_name(self, experiment_name: str):
-        self.area: str = re.findall("pc4\d{4}", experiment_name)[0].removeprefix('pc4')
         self.flexwindow_duration: int = int(re.findall("flexwindowduration\d*", experiment_name)[0].removeprefix("flexwindowduration"))
         self.congestion_start: datetime = parser.parse(re.findall("congestionstart\d{4}-\d{2}-\d{2}T\d{4}", experiment_name)[0].removeprefix("congestionstart"))
         self.congestion_duration = int(re.findall("congestionduration\d*", experiment_name)[0].removeprefix("congestionduration"))
-        if re.fullmatch(ExperimentDescription.v1_regex, experiment_name):
+        if re.fullmatch(ExperimentDescription.ev_regex_v1, experiment_name):
+            self.group: str = re.findall("pc4\d{4}", experiment_name)[0].removeprefix('pc4')
             self.flexwindow_start = self.congestion_start - timedelta(hours=6)
-        elif re.fullmatch(ExperimentDescription.v2_regex, experiment_name):
+        elif re.fullmatch(ExperimentDescription.ev_regex_v2, experiment_name):
+            self.group: str = re.findall("pc4\d{4}", experiment_name)[0].removeprefix('pc4')
             self.flexwindow_start: datetime = parser.parse(re.findall("flexwindowstart\d{4}-\d{2}-\d{2}T\d{4}", experiment_name)[0].removeprefix("flexwindowstart"))
+        elif re.fullmatch(ExperimentDescription.hp_regex, experiment_name):
+            self.group : str = re.findall(".*_flexwindowstart", experiment_name)[0].removesuffix('_flexwindowstart')
 
 
-    def get_area(self) -> str:
-        return self.area
+    def get_group(self) -> str:
+        return self.group
 
 
     def get_flexwindow_duration(self) -> datetime:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import matplotlib.table as tbl
@@ -28,34 +28,25 @@ class Plotting():
         return plt.figure(self.figure_cnt - 1, **kwargs)
 
 
-    # def plot_p_f(self, exp: Experiment, ptu: int):
-    #     self.__create_figure()
-    #     plt.scatter(exp.get_baseline(ptu), exp.get_flex_metric(ptu))
-    #     plt.xlabel('Power (W)')
-    #     plt.ylabel('Flex metric')
-    #     plt.title(f"P-f, {__format_exp_name(exp)}, PTU: {ptu + 1}")   
-    #     plt.show(block=self.block_on_plot)
-
-
-    def plot_mean_baseline_and_shifted(self, exp: Experiment):
+    def plot_experiment_mean_baseline_and_shifted(self, exp: Experiment):
         self.__create_figure()
         ptus = range(exp.get_congestion_duration())
         plt.plot(ptus, exp.get_baseline_profiles().mean(axis=1))
         plt.plot(ptus, exp.get_shifted_profiles().mean(axis=1))
         plt.xlabel('PTU')
         plt.ylabel('Power (W)')
-        plt.title(f"Mean Power {__format_exp_name(exp.exp_des)} ")
+        plt.title(f"Mean\n{Plotting.__format_exp_name(exp.exp_des)} ")
         plt.show(block=self.block_on_plot)
 
 
-    def plot_sum_baseline_and_shifted(self, exp: Experiment):
+    def plot_experiement_sum_baseline_and_shifted(self, exp: Experiment):
         self.__create_figure()
         ptus = range(exp.get_congestion_duration())
         plt.plot(ptus, exp.get_baseline_profiles().sum(axis=1))
-        plt.plot(ptus, exp.get_shifted_profiles.sum(axis=1))
+        plt.plot(ptus, exp.get_shifted_profiles().sum(axis=1))
         plt.xlabel('PTU')
         plt.ylabel('Power (W)')
-        plt.title(f"Summed Power {__format_exp_name(exp.exp_des)} ")
+        plt.title(f"Summed Power \n{Plotting.__format_exp_name(exp.exp_des)} ")
         plt.show(block=self.block_on_plot)
 
 
@@ -74,11 +65,11 @@ class Plotting():
         plt.plot(ptus, shifted_percentile)
         plt.xlabel('PTU')
         plt.ylabel('Power (W)')
-        plt.title(f"P{percentile} Power, {__format_exp_name(exp.exp_des)}")
+        plt.title(f"P{percentile} Power, {Plotting.__format_exp_name(exp.exp_des)}")
         plt.show(block=self.block_on_plot)
 
 
-    def plot_multipe_percentile_and_mean(self, experiments: ExperimentContainer, percentile: int):
+    def plot_mean_baseline_and_shifted(self, experiments: ExperimentContainer):
         if len(experiments.exp) == 0:
             raise AssertionError("No experiment data to plot")
         exp_per_cong_start :Dict[str, Experiment] = {}
@@ -110,20 +101,14 @@ class Plotting():
                 ptus = range(exp.get_congestion_duration())
                 baseline_mean = []
                 shifted_mean = []
-                baseline_percentile = []
-                shifted_percentile = []
                 count_len = []
 
                 for i in ptus:
-                    baseline_mean.append(exp.get_baseline(i).mean())
-                    shifted_mean.append(exp.get_shifted(i).mean())
-                    baseline_percentile.append(np.percentile(exp.get_baseline(i), percentile, axis=0))
-                    shifted_percentile.append(np.percentile(exp.get_shifted(i), percentile, axis=0))
+                    baseline_mean.append(exp.get_baseline(i).sum() / exp.get_num_active_baseline_devices(i))
+                    shifted_mean.append(exp.get_shifted(i).sum() / exp.get_num_active_baseline_devices(i))
                     count_len.append(exp.get_num_active_baseline_devices(i))
                 ax.plot(ptus, baseline_mean, label = 'Baseline mean')
-                ax.plot(ptus, baseline_percentile, label = f'Baseline P{percentile}')
                 ax.plot(ptus, shifted_mean, label = 'Shifted mean')
-                ax.plot(ptus, shifted_percentile, label = f'Shifted P{percentile}')
                 ax.xaxis.set_major_formatter(tkr.FormatStrFormatter('%d'))
                 ax.set_title(f"Duration: {exp.get_congestion_duration()}", y=1.05)
                 table = tbl.table(ax=ax, cellText=[count_len], loc='top')
@@ -151,7 +136,7 @@ class Plotting():
 
         # Displaying a color bar to understand which color represents which range of data 
         plt.colorbar() 
-        plt.title(f"{' ,'.join(container.get_areas())} - {cong_start}")
+        plt.title(f"{' ,'.join(container.get_groups())} - {cong_start}")
         plt.xticks(range(len(df.columns.values)), df.columns)
         plt.xlabel("PTU")
         plt.yticks(range(len(df)), df.index) 
@@ -173,7 +158,7 @@ class Plotting():
 
         # Displaying a color bar to understand which color represents which range of data 
         plt.colorbar() 
-        plt.title(f"{' ,'.join(container.get_areas())} - {duration}")
+        plt.title(f"{' ,'.join(container.get_groups())} - {duration}")
         plt.xticks(range(len(df.columns.values)), df.columns)
         plt.xlabel("PTU")
         plt.yticks(range(len(df)), df.index) 
@@ -213,5 +198,5 @@ class Plotting():
             self.figure_cnt += 1
 
 
-def __format_exp_name(exp) -> str:
-    return f"start: {str(exp.get_congestion_start())}, duration: {exp.get_congestion_duration()}, window: {exp.get_flexwindow_duration()}"
+    def __format_exp_name(exp) -> str:
+        return f"start: {str(exp.get_congestion_start())}, duration: {exp.get_congestion_duration()}, window: {exp.get_flexwindow_duration()}"

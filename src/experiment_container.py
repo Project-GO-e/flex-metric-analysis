@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List
 
 from experiment import Experiment
@@ -54,10 +54,10 @@ class ExperimentContainer():
         return dict(sorted(data.items()))
     
     
-    def get_mean_flex_per_area(self) -> Dict[str, List[float]]:
+    def get_mean_flex_per_group(self) -> Dict[str, List[float]]:
         data: Dict[str, List[float] ] = {}
         for exp in self.exp.values():
-            flex_metrics = data.setdefault(exp.exp_des.get_area(), [])
+            flex_metrics = data.setdefault(exp.exp_des.get_group(), [])
             flex_metrics.extend(exp.get_weighted_mean_flex_metrics().to_numpy())
         return data
     
@@ -79,5 +79,5 @@ class ExperimentContainer():
         return data
     
     
-    def get_areas(self) -> List[str]:
-        return list((set(map(lambda e: e.exp_des.get_area(), self.exp.values()))))
+    def get_groups(self) -> List[str]:
+        return list((set(map(lambda e: e.exp_des.get_group(), self.exp.values()))))
