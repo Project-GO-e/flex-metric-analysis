@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import matplotlib.table as tbl
@@ -151,7 +151,7 @@ class Plotting():
 
         # Displaying a color bar to understand which color represents which range of data 
         plt.colorbar() 
-        plt.title(f"{' ,'.join(container.get_areas())} - {cong_start}")
+        plt.title(f"{' ,'.join(container.get_groups())} - {cong_start}")
         plt.xticks(range(len(df.columns.values)), df.columns)
         plt.xlabel("PTU")
         plt.yticks(range(len(df)), df.index) 
@@ -173,7 +173,7 @@ class Plotting():
 
         # Displaying a color bar to understand which color represents which range of data 
         plt.colorbar() 
-        plt.title(f"{' ,'.join(container.get_areas())} - {duration}")
+        plt.title(f"{' ,'.join(container.get_groups())} - {duration}")
         plt.xticks(range(len(df.columns.values)), df.columns)
         plt.xlabel("PTU")
         plt.yticks(range(len(df)), df.index) 

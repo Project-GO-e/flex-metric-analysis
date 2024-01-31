@@ -41,7 +41,7 @@ class Experiment:
 
 
     def get_congestion_zipcode(self) -> str:
-        return self.exp_des.get_area()
+        return self.exp_des.get_group()
     
     
     def get_weighted_mean_flex_metrics(self) -> pd.DataFrame:

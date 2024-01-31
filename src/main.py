@@ -7,32 +7,32 @@ from experiment_filter import ExperimentFilter
 from experiment_loader import FileLoader
 from plotting import *
 
-BASE_DIR='data/all_pc4/'
+BASE_DIR='data/hp/'
 
-BASELINES_DIR=BASE_DIR + 'ev/baselines/'
-SHIFTED_DIR=BASE_DIR + 'ev/shifted/'
+BASELINES_DIR=BASE_DIR + 'baselines/'
+SHIFTED_DIR=BASE_DIR + 'shifted/'
 
 
 if __name__ == "__main__":
 
-    DAY = datetime(2020,6,3)
+    # DAY = datetime(2020,6,3)
 
-    load_filter = ExperimentFilter().with_area('9722')
-    all_experiments = FileLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments(load_filter)
+    # load_filter = ExperimentFilter().with_grout('9722')
+    all_experiments = FileLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments()
     
     plot: Plotting = Plotting()
     
-    plot.flex_metric_heat_map_for_cong_start(all_experiments, DAY.replace(hour=10))
+    # plot.flex_metric_heat_map_for_cong_start(all_experiments, DAY.replace(hour=10))
     
-    plot.flex_metric_heat_map_for_duration(all_experiments, 16)
-    # plot.flex_metric_heat_map_for_duration(all_experiments.filter(ExperimentFilter().with_area('9722')), 16)
+    # plot.flex_metric_heat_map_for_duration(all_experiments, 16)
+    # plot.flex_metric_heat_map_for_duration(all_experiments.filter(ExperimentFilter().with_group('9722')), 16)
 
     plot.flex_metric_histogram_per_duration(all_experiments)
 
     # plot.flex_metric_histogram_per_time_of_day(all_experiments)
 
     # plot.flex_metric_histogram_per_duration(all_experiments.filter(ExperimentFilter()))
-    plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=7))))
+    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=7))))
     # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=8))))
     # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=9))))
     # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=10))))
