@@ -52,26 +52,18 @@ class Experiment:
         return self.__mean_weighted_flex_metric[self.exp_des.congestion_start + self.ptu_duration * ptu]
 
 
-    # TODO: fix
-    # def get_baseline(self, ptu: int) -> pd.Series:
-    #     """Return the baseline power for a PTU of all devices that are non-zero in the baseline"""
-    #     for ptu_idx in range(self.get_congestion_duration()):
-    #       mask = self.__baseline.iloc[ptu_idx] != 0.0
-    #       baselines_wo_zeros = self.__baseline.iloc[ptu_idx][mask.values]
-    #     return 0
-
-
     def get_baseline_profiles(self) -> pd.DataFrame:
         """Return the baseline power for all PTU of all devices"""
         return self.__baseline
 
+    def get_baseline(self, ptu: int) -> pd.Series:
+        """Return the baseline power of all devices"""
+        return self.__baseline.iloc[ptu]
 
-    # TODO: fix
-    # def get_shifted(self, ptu: int) -> pd.Series:
-    #     """Return the power after flex optimalization of all devices that are non-zero in the baseline"""
-    #     # mask = self.__baseline.iloc[ptu_idx] != 0.0
-    #     # baselines_wo_zeros = self.__baseline.iloc[ptu_idx][mask.values]
-    #     return self.__shifted_wo_zeros[ptu]
+    
+    def get_shifted(self, ptu: int) -> pd.Series:
+        """Return the power after flex optimalization of all devices"""
+        return self.__shifted.iloc[ptu]
     
 
     def get_shifted_profiles(self) -> pd.DataFrame:
@@ -80,7 +72,5 @@ class Experiment:
 
 
     def get_num_active_baseline_devices(self, ptu: int) -> int:
-        # TODO: fix
-        # mask = self.__baseline.iloc[ptu_idx] != 0.0
-        # baselines_wo_zeros = self.__baseline.iloc[ptu_idx][mask.values]
-        return self.__baseline_wo_zeros[ptu].count()
+        mask = self.__baseline.iloc[ptu] != 0.0
+        return self.__baseline.iloc[ptu][mask.values].count()
