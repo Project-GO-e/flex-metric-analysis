@@ -14,6 +14,7 @@ baseline = next(Path(INPUT_DIR).glob('baselines*'))
 print(baseline)
 baseline_df = pd.read_csv(baseline, index_col=0, parse_dates=True)
 
+convert_cnt = 0
 for exp_path in Path(INPUT_DIR).iterdir():
     if (re.fullmatch("flex_profiles.*", exp_path.stem)):
         df = pd.read_csv(exp_path,index_col=0, parse_dates=True)
@@ -29,8 +30,7 @@ for exp_path in Path(INPUT_DIR).iterdir():
                     f"congestionstart{cong_start.strftime(DATETIME_FORMAT)}_"
                     f"congestionduration{cong_dur}")
         df.to_csv(SHIFTED_OUTPUT_DIR + new_name + ".csv", sep=';' )
-
-        
-        baseline_df = baseline_df[df.index[0]:df.index[-1]]
-        baseline_df.to_csv(BASELINE_OUTPUT_DIR + new_name + ".csv", sep=';')
+        baseline_df[df.index[0]:df.index[-1]].to_csv(BASELINE_OUTPUT_DIR + new_name + ".csv", sep=';')
+        convert_cnt+=1
+print(f"Converted {convert_cnt} experiments")
 
