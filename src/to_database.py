@@ -1,18 +1,22 @@
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from db.flex_metrics import Base, FlexMetrics
+from db.flex_metrics import FlexMetrics
+from db.flex_metrics_dao import FlexMetricsDao
 from experiment_description import DeviceType, ExperimentDescription
 from experiment_filter import ExperimentFilter
 from experiment_loader import FileLoader
 
-BASE_DIR='data/all_pc4/'
+BASE_DIR=Path('data')
 
-BASELINES_DIR=BASE_DIR + 'ev/baselines/'
-SHIFTED_DIR=BASE_DIR + 'ev/shifted/'
+BASELINES_DIR=BASE_DIR / Path('all_pc4/ev/baselines/')
+SHIFTED_DIR=BASE_DIR / Path('all_pc4/ev/shifted/')
+
+HP_BASELINES_DIR=BASE_DIR / Path('hp/baseline/')
+HP_SHIFTED_DIR=BASE_DIR / Path('hp/shifted/')
 
 DAY = datetime(2020,6,6)
 
@@ -21,17 +25,21 @@ engine = create_engine("sqlite:///test.db", echo=True)
 FlexMetrics.metadata.drop_all(engine)
 FlexMetrics.metadata.create_all(engine)
 
-areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).get_area(), Path(BASELINES_DIR).iterdir()))
 
-print(areas)
+areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).get_group(), Path(BASELINES_DIR).iterdir()))
+print(list(areas)[:10])
 
-for area in areas:
-
-    load_filter = ExperimentFilter().with_area(area)
+for area in list(areas)[:10]:
+    load_filter = ExperimentFilter().with_group(area)
     all_experiments = FileLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments(load_filter)
 
     with Session(engine) as session:
-        for e in all_experiments.exp.values():
-            session.add(e.to_db_object())
-        session.commit()
+        doa = FlexMetricsDao(session)
+        doa.save_container(all_experiments)
+       
 
+hp_experiments = FileLoader(baselines_dir=HP_BASELINES_DIR, shifted_dir=HP_SHIFTED_DIR).load_experiments()
+
+with Session(engine) as session:
+    doa = FlexMetricsDao(session)
+    doa.save_container(hp_experiments)

@@ -31,12 +31,23 @@ class ExperimentDescription():
         return v1_match or v2_match or hp_match
 
 
+    def determine_typical_day(self):
+        match self.device_type:
+            case DeviceType.EV:
+                return "workday" if self.congestion_start.weekday() < 5 else "weekendday"
+            case DeviceType.HP:
+                return "winterday"
+            case other:
+                return ""
+    
+
     def __init__(self, expirement_name: str, device_type: DeviceType) -> None:
         if not ExperimentDescription.validate_name(expirement_name):
             raise AssertionError(f"Invalid experiment (file) name '{expirement_name}'")
         self.name = expirement_name
         self.device_type = device_type
         self.parse_experiment_name(expirement_name)
+        self.typical_day = self.determine_typical_day()
 
 
     def parse_experiment_name(self, experiment_name: str):
