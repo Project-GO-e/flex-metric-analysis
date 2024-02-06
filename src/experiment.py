@@ -40,7 +40,7 @@ class Experiment:
         return self.exp_des.get_flexwindow_duration()
 
 
-    def get_congestion_zipcode(self) -> str:
+    def get_group(self) -> str:
         return self.exp_des.get_group()
     
     

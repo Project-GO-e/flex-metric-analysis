@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -18,18 +17,15 @@ SHIFTED_DIR=BASE_DIR / Path('all_pc4/ev/shifted/')
 HP_BASELINES_DIR=BASE_DIR / Path('hp/baseline/')
 HP_SHIFTED_DIR=BASE_DIR / Path('hp/shifted/')
 
-DAY = datetime(2020,6,6)
-
-engine = create_engine("sqlite:///test.db", echo=True)
+engine = create_engine("sqlite:///ev-hp-flex-metrics.db", echo=False)
 
 FlexMetrics.metadata.drop_all(engine)
 FlexMetrics.metadata.create_all(engine)
 
-
 areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).get_group(), Path(BASELINES_DIR).iterdir()))
 print(list(areas)[:10])
 
-for area in list(areas)[:10]:
+for area in areas:
     load_filter = ExperimentFilter().with_group(area)
     all_experiments = FileLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments(load_filter)
 

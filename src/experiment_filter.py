@@ -36,7 +36,7 @@ class ExperimentFilter():
         self.cong_starts.append(cong_start)
         return self
 
-    def with_cong_starts(self, cong_starts: List[str] ) -> ExperimentFilter:
+    def with_cong_starts(self, cong_starts: List[datetime] ) -> ExperimentFilter:
         self.cong_starts.extend(cong_starts)
         return self
 
@@ -44,7 +44,7 @@ class ExperimentFilter():
         self.cong_durations.append(cong_duration)
         return self
 
-    def with_cong_durations(self, cong_duration: List[str] ) -> ExperimentFilter:
+    def with_cong_durations(self, cong_duration: List[int] ) -> ExperimentFilter:
         self.cong_durations.extend(cong_duration)
         return self
     

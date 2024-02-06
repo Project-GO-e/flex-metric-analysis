@@ -1,6 +1,6 @@
 
 import pickle
-from datetime import datetime
+from datetime import datetime, time
 from typing import List
 
 from sqlalchemy import select
@@ -19,7 +19,7 @@ class FlexMetricsDao():
         baseline = pickle.dumps(exp.get_baseline_profiles().mean(axis=1).to_list())
         flex_metric = pickle.dumps(exp.get_weighted_mean_flex_metrics().to_list())
         return FlexMetrics(id=exp.exp_des.name, 
-                            cong_start=exp.exp_des.congestion_start,
+                            cong_start=exp.exp_des.congestion_start.time(),
                             cong_duration=exp.exp_des.congestion_duration,
                             asset_type=str(exp.exp_des.device_type),
                             group=exp.exp_des.group,
@@ -43,15 +43,25 @@ class FlexMetricsDao():
         self.session.commit()
 
 
-    def get_ev_typical_days(self) -> List[str]:
-        stmt = select(FlexMetrics.typical_day).where(FlexMetrics.asset_type.is_('DeviceType.EV')).distinct()
+    def get_typical_days(self, device_type: DeviceType) -> List[str]:
+        stmt = select(FlexMetrics.typical_day).where(FlexMetrics.asset_type.is_(str(device_type))).distinct()
         return self.session.scalars(stmt).all()
     
     
-    def get_hp_typical_days(self) -> List[str]:
-        stmt = select(FlexMetrics.typical_day).where(FlexMetrics.asset_type.is_('DeviceType.HP')).distinct()
+    def get_congestion_start(self) -> List[time]:
+        stmt = select(FlexMetrics.cong_start).distinct()
         return self.session.scalars(stmt).all()
+    
 
+    def get_congestion_duration(self, cong_start: time) -> List[int]:
+        stmt = select(FlexMetrics.cong_duration).where(FlexMetrics.cong_start.is_(cong_start)).distinct()
+        return self.session.scalars(stmt).all()
+    
+    
+    def get_groups_for_device_type(self: time, device_type: DeviceType) -> List[int]:
+        stmt = select(FlexMetrics.group).where(FlexMetrics.asset_type.is_(str(device_type))).distinct()
+        return self.session.scalars(stmt).all()
+    
 
     def get_flex_metrics(self, asset_type: DeviceType, cong_start: datetime, cong_dur: int, group: str, typical_day: str) -> List[float]:
         stmt = select(FlexMetrics.flex_metric)\

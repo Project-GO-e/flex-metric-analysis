@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import datetime, time
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -12,7 +12,7 @@ engine = create_engine("sqlite:///test.db", echo=True)
 
 with Session(engine) as session:
     doa = FlexMetricsDao(session)
-    m = doa.get_flex_metrics(DeviceType.HP, datetime(2020,1,15,10), 8, 'tussen+2012+family', 'winterday')
+    m = doa.get_flex_metrics(DeviceType.HP, time(10), 8, 'tussen+2012+family', 'winterday')
     print(m)
-    m = doa.get_flex_metrics(DeviceType.EV, datetime(2020,6,3,10), 8, '2515', 'workday')
+    m = doa.get_flex_metrics(DeviceType.EV, time(10), 8, '9561', 'workday')
     print(m)

@@ -31,10 +31,10 @@ class FileLoader():
         print(f"Loading experiments from files...")
         t = time()
         cnt_checked = 0
-        experiments = filter(lambda e: ExperimentDescription.validate_name(e.stem), self.baselines_dir.iterdir())
+        experiments = list(filter(lambda e: ExperimentDescription.validate_name(e.stem), self.baselines_dir.iterdir()))
         for exp_path in experiments:
             description = ExperimentDescription(exp_path.stem, device_type)
-            if cnt_checked % 50 == 0:
+            if cnt_checked > 0 and cnt_checked % int(max(len(experiments),10) / 10) == 0:
                 print(f"Loaded {len(all_experiments)} / {cnt_checked} experiments.")
             cnt_checked += 1
             if experiment_filter.passFilter(description):                    
@@ -48,7 +48,7 @@ class FileLoader():
                     print("ERROR: Experiment '" + e.filename + "' doesn't have a shifted input data file")
         # Fast fail approach:
         if missing_shifted_file : exit(1)
-        print(f"Experiments loaded successfully. Loaded {len(all_experiments)} experiments in {round(time() - t)} seconds.")
+        print(f"Experiments loaded successfully. Loaded {len(all_experiments)} / {cnt_checked} experiments in {round(time() - t)} seconds.")
         return ExperimentContainer(all_experiments)
     
 
