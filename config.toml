@@ -1,0 +1,30 @@
+
+congestion-start = 10:00:00
+congestion-duration = 4
+
+[ev]
+typical-day = "workday"
+pc4 = "9722"
+amount = 10
+# baseline-total = [1.0,1.0,1.0,1.0]
+
+[pv]
+typical-day = "januari-work"
+
+
+[non-flexible-load]
+
+# Use a typical work/weekend day in month
+typical-day = '???'
+
+[[non-flexible-load.sjv]]
+name = 'sjv500'
+amount = 40
+
+[hp]
+typical-day = "winterday"
+
+[[hp.house-type]]
+name = "tussen+2012+family"
+amount = 30
+# baseline-total = [1.0,1.0,1.0,1.0]

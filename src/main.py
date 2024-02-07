@@ -1,58 +1,93 @@
-from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, NamedTuple
 
+import numpy as np
+from dataclass_binder import Binder
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+
+from db.flex_metrics_dao import FlexMetricsDao
 from experiment_description import DeviceType
-from experiment_filter import ExperimentFilter
-from experiment_loader import FileLoader
-from plotting import *
+from flex_metric_config import Config
 
-BASE_DIR='data/hp/'
+DB_FILE="ev-hp-flex-metrics.db"
+CONFIG_FILE="config.toml"
 
-BASELINES_DIR=BASE_DIR + 'baselines/'
-SHIFTED_DIR=BASE_DIR + 'shifted/'
 
+class DatabaseProfiles(NamedTuple):
+    ev: List[float]
+    hp: Dict[str,List[float]]
+
+
+class FlexPower():
+
+    def __init__(self, config_file: Path) -> None:
+        self.conf: Config = Binder(Config).parse_toml(config_file)
+        if not self.conf.is_valid():
+            print("Exiting...")
+            exit(1)
+        self.engine = create_engine(f"sqlite:///{DB_FILE}", echo=False)
+
+
+    def fetch_flex_metrics(self) -> DatabaseProfiles:
+        with Session(self.engine) as session:
+            doa = FlexMetricsDao(session)
+            ev_fm = doa.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
+            hp_fm : Dict[str, List[float]] = {}
+            for hp in self.conf.hp.house_type:
+                hp_fm[hp.name] = doa.get_flex_metrics(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
+        return DatabaseProfiles(ev_fm, hp_fm)
+
+    
+    def fetch_flex_asset_baselines(self) -> DatabaseProfiles:
+        with Session(self.engine) as session:
+            doa = FlexMetricsDao(session)
+            ev = doa.get_baseline(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
+            hp_baselines : Dict[str, List[float]] = {}
+            for hp in self.conf.hp.house_type:
+                hp_baselines[hp.name] = doa.get_baseline(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
+        return DatabaseProfiles(ev, hp_baselines)
+
+
+    def determine_flex_power(self) -> np.array:
+        flex_metrics = self.fetch_flex_metrics()
+        if self.conf.all_baselines_available():
+            ev_baseline = np.array(self.conf.ev.baseline_total)
+            hp_baselines = {hp.name:np.array(hp.baseline_total) for hp in self.conf.hp.house_type}
+        else:
+            profiles = self.fetch_flex_asset_baselines()
+            ev_baseline = np.array(profiles.ev) * self.conf.ev.amount
+            hp_baselines = {}
+            for hp_type in self.conf.hp.house_type:
+                hp_baselines[hp_type.name] = np.array(profiles.hp[hp_type.name]) * hp_type.amount
+        
+        ev_flex = np.array(flex_metrics.ev) * ev_baseline
+        hp_flex = 0
+        for hp in hp_baselines:
+            hp_flex += np.array(flex_metrics.hp[hp]) * hp_baselines[hp]
+        
+        print("EV flex" + str(ev_flex))
+        print("HP flex" + str(hp_flex))
+        print("Flex Power: " + str(ev_flex + hp_flex))
+        return ev_flex + hp_flex
+            
+
+
+def test_toml():
+    config_file = Path("config.toml")
+    config = Binder(Config).parse_toml(config_file)
+    print(config.congestion_start)
+
+
+def write_toml_template():
+    with open("config.toml.template", "w") as out:
+        for line in Binder(Config).format_toml():
+            print(line, file=out)
 
 if __name__ == "__main__":
 
-    DAY = datetime(2020,1,15)
+    FlexPower(Path(CONFIG_FILE)).determine_flex_power()
 
-    # load_filter = ExperimentFilter().with_grout('9722')
-    all_experiments = FileLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments()
-    
-    plot: Plotting = Plotting()
-
-    plot.plot_mean_baseline_and_shifted(all_experiments)
-
-    plot.flex_metric_histogram_per_duration(all_experiments)
-    
-    plot.flex_metric_heat_map_for_cong_start(all_experiments, DAY.replace(hour=10))
-    
-    plot.flex_metric_heat_map_for_duration(all_experiments, 16)
-    # plot.flex_metric_heat_map_for_duration(all_experiments.filter(ExperimentFilter().with_group('9722')), 16)
-
-
-    # plot.flex_metric_histogram_per_time_of_day(all_experiments)
-
-    # plot.flex_metric_histogram_per_duration(all_experiments.filter(ExperimentFilter()))
-    plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=7))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=8))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=9))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=10))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=16))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=17))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=18))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=19))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=20))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=21))))
-    
-    #plot.flex_metric_histogram_per_time_of_day(all_experiments.filter(ExperimentFilter().with_cong_start(DAY.replace(hour=10))))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_duration(20)))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_duration(24)))
-    # plot.flex_metric_histogram(all_experiments.filter(ExperimentFilter().with_cong_duration(32)))
-    # plot.flex_metric_histogram(all_experiments)
-
-    
-    plot.show()
-    
+    # write_toml_template()
+    # test_toml()
     print("Done. Bye!")

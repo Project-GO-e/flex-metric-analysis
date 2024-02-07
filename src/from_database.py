@@ -1,5 +1,5 @@
 
-from datetime import datetime, time
+from datetime import time
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session

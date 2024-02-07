@@ -1,6 +1,6 @@
 
 import pickle
-from datetime import datetime, time
+from datetime import time
 from typing import List
 
 from sqlalchemy import select
@@ -63,7 +63,7 @@ class FlexMetricsDao():
         return self.session.scalars(stmt).all()
     
 
-    def get_flex_metrics(self, asset_type: DeviceType, cong_start: datetime, cong_dur: int, group: str, typical_day: str) -> List[float]:
+    def get_flex_metrics(self, asset_type: DeviceType, cong_start: time, cong_dur: int, group: str, typical_day: str) -> List[float]:
         stmt = select(FlexMetrics.flex_metric)\
                     .filter(FlexMetrics.asset_type.is_(str(asset_type)))\
                     .filter(FlexMetrics.cong_start.is_(cong_start))\
@@ -71,4 +71,15 @@ class FlexMetricsDao():
                     .filter(FlexMetrics.group.is_(group))\
                     .filter(FlexMetrics.typical_day.is_(typical_day))
         return pickle.loads(self.session.scalar(stmt))
+
+
+    def get_baseline(self, asset_type: DeviceType, cong_start: time, cong_dur: int, group: str, typical_day: str) -> List[float]:
+        stmt = select(FlexMetrics.baseline)\
+                    .filter(FlexMetrics.asset_type.is_(str(asset_type)))\
+                    .filter(FlexMetrics.cong_start.is_(cong_start))\
+                    .filter(FlexMetrics.cong_duration.is_(cong_dur))\
+                    .filter(FlexMetrics.group.is_(group))\
+                    .filter(FlexMetrics.typical_day.is_(typical_day))
+        return pickle.loads(self.session.scalar(stmt))
         
+    
