@@ -1,8 +1,7 @@
 
-from datetime import datetime, time
-from typing import Optional
+from datetime import time
 
-from sqlalchemy import Column, DateTime, Time
+from sqlalchemy import BLOB, Column, Time
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,8 +17,16 @@ class FlexMetrics(Base):
     asset_type: Mapped[str]
     group: Mapped[str]
     typical_day: Mapped[str]
-    baseline: Mapped[Optional[str]]
-    flex_metric: Mapped[Optional[str]]
+    baseline: Mapped[BLOB]
+    flex_metric: Mapped[BLOB]
 
     def __repr__(self) -> str:
         return f"{self.asset_type}: cong_start: {self.cong_start}, cong_dur: {self.cong_duration})"
+
+
+class NonFlexDevices(Base):
+    __tablename__ = "non_flex_devices"
+    
+    asset_type: Mapped[str]
+    typical_day: Mapped[str]
+    mean_power: Mapped[BLOB]

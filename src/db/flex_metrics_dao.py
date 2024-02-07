@@ -6,7 +6,7 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.flex_metrics import FlexMetrics
+from db.models import FlexMetrics
 from experiment import Experiment
 from experiment_container import ExperimentContainer
 from experiment_description import DeviceType

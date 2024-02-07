@@ -3,8 +3,8 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from db.flex_metrics import FlexMetrics
 from db.flex_metrics_dao import FlexMetricsDao
+from db.models import FlexMetrics
 from experiment_description import DeviceType, ExperimentDescription
 from experiment_filter import ExperimentFilter
 from experiment_loader import FileLoader
