@@ -36,7 +36,7 @@ class ExperimentDescription():
             case DeviceType.EV:
                 return "workday" if self.congestion_start.weekday() < 5 else "weekendday"
             case DeviceType.HP:
-                return "winterday"
+                return self.congestion_start.strftime('%B')
             case other:
                 return ""
     
