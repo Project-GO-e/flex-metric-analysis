@@ -31,7 +31,7 @@ class FlexDevices(Base):
 class NonFlexDevices(Base):
     __tablename__ = "non_flex_devices"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[str] = mapped_column(primary_key=True)
     asset_type: Mapped[str]
     typical_day: Mapped[str]
     mean_power: Mapped[BLOB] = Column(BLOB)

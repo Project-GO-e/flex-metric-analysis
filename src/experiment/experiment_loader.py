@@ -25,31 +25,29 @@ class FileLoader():
         
     
     def load_experiments(self, experiment_filter: ExperimentFilter = ExperimentFilter()) -> ExperimentContainer:
-        all_experiments = {}
+        loaded_experiments = {}
         missing_shifted_file = False
         device_type = DeviceType.from_string(PurePath(self.baselines_dir).parts[-2])
         print(f"Loading experiments from files...")
         t = time()
-        cnt_checked = 0
-        experiments = list(filter(lambda e: ExperimentDescription.validate_name(e.stem), self.baselines_dir.iterdir()))
-        for exp_path in experiments:
+        all_experiments = list(filter(lambda e: ExperimentDescription.validate_name(e.stem), self.baselines_dir.iterdir()))
+        for cnt_checked, exp_path in enumerate(all_experiments):
             description = ExperimentDescription(exp_path.stem, device_type)
-            if cnt_checked > 0 and cnt_checked % int(max(len(experiments),10) / 10) == 0:
-                print(f"Loaded {len(all_experiments)} / {cnt_checked} experiments.")
-            cnt_checked += 1
+            if cnt_checked > 0 and cnt_checked % int(max(len(all_experiments),10) / 10) == 0:
+                print(f"Loaded {len(loaded_experiments)} / {cnt_checked} experiments.")
             if experiment_filter.passFilter(description):                    
                 shifted_path = self.shifted_dir / exp_path.name
                 try:
                     df_baseline = FileLoader.__load_file(exp_path)
                     df_shifted = FileLoader.__load_file(shifted_path)
-                    all_experiments[description.name] = Experiment(df_baseline, df_shifted, description)
+                    loaded_experiments[description.name] = Experiment(df_baseline, df_shifted, description)
                 except FileNotFoundError as e:
                     missing_shifted_file = True
                     print("ERROR: Experiment '" + e.filename + "' doesn't have a shifted input data file")
         # Fast fail approach:
         if missing_shifted_file : exit(1)
-        print(f"Experiments loaded successfully. Loaded {len(all_experiments)} / {cnt_checked} experiments in {round(time() - t)} seconds.")
-        return ExperimentContainer(all_experiments)
+        print(f"Experiments loaded successfully. Loaded {len(loaded_experiments)} / {cnt_checked} experiments in {round(time() - t)} seconds.")
+        return ExperimentContainer(loaded_experiments)
     
 
     def __load_file(path: Path) -> pd.DataFrame:

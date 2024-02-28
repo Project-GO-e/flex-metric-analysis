@@ -14,17 +14,17 @@ from experiment.experiment_loader import FileLoader
 from util.conflex import (get_daily_pv_expectation_values,
                           get_daily_sjv_expectation_values, readGM)
 
-BASE_PATH=Path('data/test')
+BASE_PATH=Path('data')
 
-EV_BASELINES=BASE_PATH / 'ev/baseline/'
-EV_SHIFTED=BASE_PATH / 'ev/shifted/'
+EV_BASELINES=BASE_PATH / 'all_pc4/ev/baseline/'
+EV_SHIFTED=BASE_PATH / 'all_pc4/ev/shifted/'
 
 HP_BASELINES=BASE_PATH / 'hp/baseline/'
 HP_SHIFTED=BASE_PATH / 'hp/shifted/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
-engine = create_engine("sqlite:///test.db", echo=False)
+engine = create_engine("sqlite:///flex-metrics.db", echo=False)
 
 
 def drop_database_tables():
@@ -41,21 +41,25 @@ def ev_from_file_to_db():
     areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).get_group(), EV_BASELINES.iterdir()))
     print(list(areas)[:10])
 
-    for area in areas:
+    for i, area in enumerate(areas):
         load_filter = ExperimentFilter().with_group(area)
         all_experiments = FileLoader(baselines_dir=EV_BASELINES, shifted_dir=EV_SHIFTED).load_experiments(load_filter)
 
         with Session(engine) as session:
             doa = FlexDevicesDao(session)
             doa.save_container(all_experiments)
+        print(f"Written {i + 1} / {len(areas)} pc4 areas to database.")
 
 
 def hp_from_file_to_db():
-    hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments()
-
-    with Session(engine) as session:
-        doa = FlexDevicesDao(session)
-        doa.save_container(hp_experiments)
+    hh_types = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.HP).get_group(), HP_BASELINES.iterdir()))
+    for i, hh_type in enumerate(hh_types):
+        load_filter = ExperimentFilter().with_group(hh_type)
+        hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments(load_filter)
+        with Session(engine) as session:
+            doa = FlexDevicesDao(session)
+            doa.save_container(hp_experiments)
+        print(f"Written {i + 1} / {len(hh_types)} household_types to database.")
 
 
 def gm_types():

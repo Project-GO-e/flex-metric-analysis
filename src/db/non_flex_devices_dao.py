@@ -18,7 +18,12 @@ class NonFlexDevicesDao():
     
     def save(self, asset_type: str, typical_day: str, mean_power) -> None:
         power = pickle.dumps(mean_power)
-        self.session.add(NonFlexDevices(asset_type=asset_type, typical_day=typical_day, mean_power=power))
+        exp_id = f"{asset_type}+{typical_day}"
+        exp_db = self.session.get(NonFlexDevices, exp_id)
+        if exp_db:
+            self.session.merge(NonFlexDevices(id=exp_id, asset_type=asset_type, typical_day=typical_day, mean_power=power))
+        else:
+            self.session.add(NonFlexDevices(id=exp_id, asset_type=asset_type, typical_day=typical_day, mean_power=power))
         self.session.commit()
 
 
