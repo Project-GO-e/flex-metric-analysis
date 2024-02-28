@@ -12,8 +12,8 @@ class EvConfig:
     '''The PC4 area for which EV data used'''
     amount: int = None
     '''The amount of EVs in the scenario. This cannot be used in combination with baseline_total'''
-    baseline_total: List[float] = None
-    '''The baseline of all EVs in the scenario. This cannot be used in combination with amount'''
+    baseline_total_W: List[float] = None
+    '''The baseline in Watt of all EVs in the scenario. This cannot be used in combination with amount'''
 
 
 @dataclass
@@ -22,8 +22,8 @@ class HouseTypeConfig:
     '''Name of this house type, formatted as [RVO-type]+[construction-year]+[inhabitants], e.g. tussen+2012+family'''
     amount: int = None
     '''The amount of heat pumps of this type. This cannot be used in combination with baseline_total'''
-    baseline_total: List[float] = None
-    '''The baseline of all heat pumps of this type. This cannot be used in combination with amount'''
+    baseline_total_W: List[float] = None
+    '''The baseline in Watt of all heat pumps of this type. This cannot be used in combination with amount'''
 
 
 @dataclass
@@ -40,16 +40,20 @@ class SjvConfig:
     amount: int
     '''Amount of househould in this sjv catogery'''
 
+
 @dataclass
 class BaseloadConfig:
     typical_day: str
     '''Use a typical work/weekend day in month'''
     sjv: List[SjvConfig]
 
+
 @dataclass
 class PvConfig:
     typical_day: str
     '''Use a typical work/weekend day in month'''
+    peak_power_W: float
+    '''Peak power in Watt of all PV'''
 
 @dataclass
 class Config:
@@ -61,16 +65,18 @@ class Config:
     hp: HpConfig
     pv: PvConfig
     non_flexible_load: BaseloadConfig
+    baseline_total_W: List[float] = None
+    '''The summed baseline in Watt of all devices in the scenario. This will only be used if individual asset type profiles are not provided'''
 
 
     def all_baselines_available(self) -> bool:
         baseline_available = True
         for hp in self.hp.house_type:
-            if hp.baseline_total is None:
+            if hp.baseline_total_W is None:
                 baseline_available = False
                 print(f"No heatpump baseline for {hp.name}")
         
-        if self.ev.baseline_total is None:
+        if self.ev.baseline_total_W is None:
             print("No EV baseline provided")
             baseline_available = False
         return baseline_available
