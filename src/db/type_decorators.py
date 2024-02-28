@@ -11,10 +11,12 @@ class MappedEnum(TypeDecorator):
     The default would have stored the enum's *name* (ie the string).
     """
     impl = String
-
+    cache_ok = True
+    
     def __init__(self, enumtype: Type[Enum], *args, **kwargs):
         super(MappedEnum, self).__init__(*args, **kwargs)
         self._enumtype = enumtype
+        
 
     def process_bind_param(self, name, dialect):
         if isinstance(name, str):
