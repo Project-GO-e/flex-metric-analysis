@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List
 
-from experiment_description import ExperimentDescription
+from .experiment_description import ExperimentDescription
 
 
 class ExperimentFilter():

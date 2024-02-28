@@ -16,6 +16,8 @@ class DeviceType(Enum):
     def from_string(cls, device_type: str) -> DeviceType:
         return cls[device_type.upper()]
 
+    def __str__(self) -> str:
+        return self.name
 
 class ExperimentDescription():
 
@@ -36,7 +38,7 @@ class ExperimentDescription():
             case DeviceType.EV:
                 return "workday" if self.congestion_start.weekday() < 5 else "weekendday"
             case DeviceType.HP:
-                return "winterday"
+                return self.congestion_start.strftime('%B')
             case other:
                 return ""
     

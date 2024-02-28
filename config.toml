@@ -1,0 +1,41 @@
+
+congestion-start = 10:00:00
+congestion-duration = 4
+baseline-total-W = [20000.0, 20000.0, 20000.0, 20000.0]
+
+[ev]
+typical-day = "workday"
+pc4 = "9722"
+amount = 11
+#baseline-total-W = [11000.0, 11000.0, 11000.0, 11000.0]
+
+[pv]
+typical-day = "January_Workday"
+peak-power-W = 3500.0
+
+
+[non-flexible-load]
+
+# Use a typical work/weekend day in month
+typical-day = "January_Workday"
+
+[[non-flexible-load.sjv]]
+name = 'sjv2500'
+amount = 10
+
+[[non-flexible-load.sjv]]
+name = 'sjv3500'
+amount = 12
+
+[hp]
+typical-day = "January"
+
+[[hp.house-type]]
+name = "2_1kap+1975-1991+family"
+amount = 6
+#baseline-total-W = [2000.0, 2000.0, 2000.0, 2000.0]
+
+[[hp.house-type]]
+name = "2_1kap+1975-1991+one_person"
+amount = 6
+#baseline-total-W = [2000.0, 2000.0, 2000.0, 2000.0]

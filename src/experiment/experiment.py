@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from experiment_description import ExperimentDescription
+from .experiment_description import ExperimentDescription
 
 
 class Experiment:
