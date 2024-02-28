@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from db.flex_devices_dao import FlexDevicesDao
-from experiment_description import DeviceType
+from experiment.experiment_description import DeviceType
 from flex_metric_config import Config, EvConfig
 
 DB_FILE="flex-metrics.db"
@@ -15,6 +15,7 @@ DB_FILE="flex-metrics.db"
 class CliWizard():
 
     engine = create_engine(f"sqlite:///{DB_FILE}", echo=False)
+
 
     def __select_yes_no(question) -> bool:
         yn = input(f"\n{question} (Y/n) ")
@@ -46,7 +47,7 @@ class CliWizard():
         return list(map(lambda x: float(x.strip()), profile_list))
 
 
-    def start():
+    def start(self):
         with Session(CliWizard.engine) as session:
             doa = FlexDevicesDao(session)
             ev_typical_days = doa.get_typical_days(DeviceType.EV)
@@ -89,7 +90,7 @@ class CliWizard():
         else:
             nr_ev = input(f"How many electric vehicles: ")
             nr_hp = input(f"How many heat pumps: ")
-            total_load = CliWizard.__read_profile("EV total load profile.", cong_dur)
+            total_load = CliWizard.__read_profile("Total baseline profile.", cong_dur)
             ev_conf = EvConfig(ev_typical_day, ev_group, nr_ev)
             hp_conf = EvConfig(hp_typical_day, hp_group, nr_hp)
 

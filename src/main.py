@@ -103,7 +103,7 @@ class FlexPower():
             print("Power after application of flex: " + str(np.array(self.conf.baseline_total_W) - ev_flex - hp_flex))
             return ev_flex + hp_flex
         else:
-            print("Baseline Power: " + str(self.conf.baseline_total_W))
+            print("Baseline Power: " + str(np.array(self.conf.baseline_total_W)))
             print("Flexible load: " + str(ev_flex + hp_flex))
             print("Power after application of flex: " + str(np.array(self.conf.baseline_total_W) - ev_flex - hp_flex))
             return ev_flex + hp_flex / (ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline) * np.array(self.conf.baseline_total_W)
@@ -124,13 +124,13 @@ def write_toml_template():
 if __name__ == "__main__":
     float_formatter = "{:.0f}".format
     np.set_printoptions(formatter={'float_kind':float_formatter})
+    
+        
     try:
         FlexPower(Path(CONFIG_FILE)).determine_flex_power()
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
-    
-    
     # write_toml_template()
     # test_toml()
     print("Done. Bye!")
