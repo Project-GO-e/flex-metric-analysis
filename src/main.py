@@ -6,9 +6,10 @@ from dataclass_binder import Binder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from db.flex_metrics_dao import FlexMetricsDao
+from db.data_not_found_exception import DataNotFoundException
+from db.flex_devices_dao import FlexDevicesDao
 from db.non_flex_devices_dao import NonFlexDevicesDao
-from experiment_description import DeviceType
+from experiment.experiment_description import DeviceType
 from flex_metric_config import Config
 
 DB_FILE="flex-metrics.db"
@@ -37,7 +38,7 @@ class FlexPower():
 
     def fetch_flex_metrics(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
-            dao = FlexMetricsDao(session)
+            dao = FlexDevicesDao(session)
             ev_fm = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
             hp_fm : Dict[str, List[float]] = {}
             for hp in self.conf.hp.house_type:
@@ -47,7 +48,7 @@ class FlexPower():
     
     def fetch_flex_asset_baselines(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
-            dao = FlexMetricsDao(session)
+            dao = FlexDevicesDao(session)
             ev = dao.get_baseline(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
             hp_baselines : Dict[str, List[float]] = {}
             for hp in self.conf.hp.house_type:
@@ -123,7 +124,11 @@ def write_toml_template():
 if __name__ == "__main__":
     float_formatter = "{:.0f}".format
     np.set_printoptions(formatter={'float_kind':float_formatter})
-    FlexPower(Path(CONFIG_FILE)).determine_flex_power()
+    try:
+        FlexPower(Path(CONFIG_FILE)).determine_flex_power()
+    except DataNotFoundException as e:
+        print("ERROR: " + str(e))
+
     
     
     # write_toml_template()

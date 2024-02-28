@@ -3,10 +3,10 @@ from time import time
 
 import pandas as pd
 
-from experiment import Experiment
-from experiment_container import ExperimentContainer
-from experiment_description import DeviceType, ExperimentDescription
-from experiment_filter import ExperimentFilter
+from .experiment import Experiment
+from .experiment_container import ExperimentContainer
+from .experiment_description import DeviceType, ExperimentDescription
+from .experiment_filter import ExperimentFilter
 
 
 class FileLoader():

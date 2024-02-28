@@ -8,10 +8,10 @@ import matplotlib.ticker as tkr
 import numpy as np
 import pandas as pd
 
-from experiment import Experiment
-from experiment_container import ExperimentContainer
-from experiment_filter import ExperimentFilter
-from experiment_loader import FileLoader
+from experiment.experiment import Experiment
+from experiment.experiment_container import ExperimentContainer
+from experiment.experiment_filter import ExperimentFilter
+from experiment.experiment_loader import FileLoader
 
 BASE_DIR='data/hp/'
 

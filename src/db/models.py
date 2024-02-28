@@ -4,18 +4,21 @@ from datetime import time
 from sqlalchemy import BLOB, Column, Time
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from db.type_decorators import MappedEnum
+from experiment.experiment_description import DeviceType
+
 
 class Base(DeclarativeBase):
     pass
 
 
-class FlexMetrics(Base):
-    __tablename__ = "flex_metrics"
+class FlexDevices(Base):
+    __tablename__ = "flexible_devices"
 
     id: Mapped[str] = mapped_column(primary_key=True)
     cong_start: Mapped[time] = Column(Time)
     cong_duration: Mapped[int]
-    asset_type: Mapped[str]
+    asset_type: Mapped[DeviceType] = Column(MappedEnum(DeviceType))
     group: Mapped[str]
     typical_day: Mapped[str]
     baseline: Mapped[BLOB] = Column(BLOB)

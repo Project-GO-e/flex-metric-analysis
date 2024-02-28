@@ -5,35 +5,35 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from conflex import (get_daily_pv_expectation_values,
-                     get_daily_sjv_expectation_values, readGM)
-from db.flex_metrics_dao import FlexMetricsDao
-from db.models import FlexMetrics, NonFlexDevices
+from db.flex_devices_dao import FlexDevicesDao
+from db.models import FlexDevices, NonFlexDevices
 from db.non_flex_devices_dao import NonFlexDevicesDao
-from experiment_description import DeviceType, ExperimentDescription
-from experiment_filter import ExperimentFilter
-from experiment_loader import FileLoader
+from experiment.experiment_description import DeviceType, ExperimentDescription
+from experiment.experiment_filter import ExperimentFilter
+from experiment.experiment_loader import FileLoader
+from util.conflex import (get_daily_pv_expectation_values,
+                          get_daily_sjv_expectation_values, readGM)
 
-BASE_PATH=Path('data')
+BASE_PATH=Path('data/test')
 
-EV_BASELINES=BASE_PATH / 'all_pc4/ev/baselines/'
-EV_SHIFTED=BASE_PATH / 'all_pc4/ev/shifted/'
+EV_BASELINES=BASE_PATH / 'ev/baseline/'
+EV_SHIFTED=BASE_PATH / 'ev/shifted/'
 
 HP_BASELINES=BASE_PATH / 'hp/baseline/'
 HP_SHIFTED=BASE_PATH / 'hp/shifted/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
-engine = create_engine("sqlite:///flex-metrics.db", echo=False)
+engine = create_engine("sqlite:///test.db", echo=False)
 
 
 def drop_database_tables():
-    FlexMetrics.metadata.drop_all(engine)
+    FlexDevices.metadata.drop_all(engine)
     NonFlexDevices.metadata.drop_all(engine)
 
 
 def create_database_tables():
-    FlexMetrics.metadata.create_all(engine)
+    FlexDevices.metadata.create_all(engine)
     NonFlexDevices.metadata.create_all(engine)
 
 
@@ -46,7 +46,7 @@ def ev_from_file_to_db():
         all_experiments = FileLoader(baselines_dir=EV_BASELINES, shifted_dir=EV_SHIFTED).load_experiments(load_filter)
 
         with Session(engine) as session:
-            doa = FlexMetricsDao(session)
+            doa = FlexDevicesDao(session)
             doa.save_container(all_experiments)
 
 
@@ -54,7 +54,7 @@ def hp_from_file_to_db():
     hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments()
 
     with Session(engine) as session:
-        doa = FlexMetricsDao(session)
+        doa = FlexDevicesDao(session)
         doa.save_container(hp_experiments)
 
 

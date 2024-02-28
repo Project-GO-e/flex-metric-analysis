@@ -16,6 +16,8 @@ class DeviceType(Enum):
     def from_string(cls, device_type: str) -> DeviceType:
         return cls[device_type.upper()]
 
+    def __str__(self) -> str:
+        return self.name
 
 class ExperimentDescription():
 

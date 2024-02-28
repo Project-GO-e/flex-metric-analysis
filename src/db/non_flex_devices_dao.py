@@ -24,7 +24,7 @@ class NonFlexDevicesDao():
 
     def get_baseline(self, asset_type: str, cong_start: time, cong_dur: int, typical_day: str) -> List[float]:
         stmt = select(NonFlexDevices.mean_power)\
-                    .filter(NonFlexDevices.asset_type.is_(str(asset_type)))\
+                    .filter(NonFlexDevices.asset_type.is_(asset_type))\
                     .filter(NonFlexDevices.typical_day.is_(typical_day))
         cong_start = datetime.combine(date(2020,1,1), time(10,0))
         cong_start_idx = int((cong_start - datetime(2020,1,1)) / timedelta(minutes=15))
