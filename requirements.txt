@@ -1,4 +1,5 @@
 pandas==2.1.0
-matplotlib
-fastparquet
+matplotlib==3.8.3
+fastparquet==2024.2.0
 SQLAlchemy==2.0.23
+dataclass-binder==0.3.4
