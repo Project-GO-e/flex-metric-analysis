@@ -1,3 +1,5 @@
+from argparse import ArgumentParser
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, NamedTuple
 
@@ -26,14 +28,30 @@ class NonFlexAssetProfiles(NamedTuple):
     sjv: Dict[str,List[float]]
 
 
-class FlexPower():
+@dataclass
+class CliArgs():
+    conf_file: str
 
-    def __init__(self, config_file: Path) -> None:
-        self.conf: Config = Binder(Config).parse_toml(config_file)
-        if not self.conf.is_valid():
-            print("Exiting...")
+
+class FlexMetrics():
+
+    def __init__(self, config_file: Path, db_file: Path) -> None:
+        if not db_file.exists():
+            print("Database file is missing. Cannot run the flex metrics tool.\nExiting...")
             exit(1)
-        self.engine = create_engine(f"sqlite:///{DB_FILE}", echo=False)
+        else:
+            self.engine = create_engine(f"sqlite:///{db_file}", echo=False)
+        try:
+            self.conf: Config = Binder(Config).parse_toml(config_file)
+        except ValueError as e:
+            print("Configuration invalid. " + str(e) +"\nExiting...")
+            exit(1)
+        except FileNotFoundError:
+            print(f"Configuration file '{config_file}' not found." + "\nExiting...")
+            exit(1)
+        if not self.conf.is_valid():
+            print("Configuration invalid. Exiting...")
+            exit(1)
 
 
     def fetch_flex_metrics(self) -> FlexAssetProfiles:
@@ -109,25 +127,30 @@ class FlexPower():
             return ev_flex + hp_flex / (ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline) * np.array(self.conf.baseline_total_W)
             
 
-def test_toml():
-    config_file = Path("config.toml")
-    config = Binder(Config).parse_toml(config_file)
-    print(config.congestion_start)
-
-
 def write_toml_template():
     with open("config.toml.template", "w") as out:
         for line in Binder(Config).format_toml():
             print(line, file=out)
+
+    
+def parse_args() -> CliArgs:
+    parser = ArgumentParser(prog="Flex Metrics Tool", description="" )
+    parser.add_argument('-f', '--file', help="configuration file name")
+    
+    args = parser.parse_args()
+    conf_file = args.file if args.file else CONFIG_FILE
+
+    return CliArgs(conf_file)
 
 
 if __name__ == "__main__":
     float_formatter = "{:.0f}".format
     np.set_printoptions(formatter={'float_kind':float_formatter})
     
+    args = parse_args()
         
     try:
-        FlexPower(Path(CONFIG_FILE)).determine_flex_power()
+        FlexMetrics(Path(args.conf_file), Path(DB_FILE)).determine_flex_power()
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
