@@ -3,7 +3,7 @@ import pickle
 from datetime import time
 from typing import List
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from db.data_not_found_exception import DataNotFoundException
@@ -100,3 +100,7 @@ class FlexDevicesDao():
             raise DataNotFoundException(f"No baseline found for {asset_type}, congestion start '{cong_start}', congestion duration '{cong_dur}', group '{group}', typical day '{typical_day}'..")
         
     
+    def delete_device_type(self, asset_type: DeviceType):
+        stmt = delete(FlexDevices).where(FlexDevices.asset_type.is_(asset_type))
+        self.session.execute(stmt)
+        self.session.commit()

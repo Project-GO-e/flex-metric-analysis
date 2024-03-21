@@ -16,11 +16,11 @@ from util.conflex import (get_daily_pv_expectation_values,
 
 BASE_PATH=Path('data')
 
-EV_BASELINES=BASE_PATH / 'all_pc4/ev/baseline/'
-EV_SHIFTED=BASE_PATH / 'all_pc4/ev/shifted/'
+EV_BASELINES=BASE_PATH / 'ev/baseline/'
+EV_SHIFTED=BASE_PATH / 'ev/shifted/'
 
-HP_BASELINES=BASE_PATH / 'hp/baseline/'
-HP_SHIFTED=BASE_PATH / 'hp/shifted/'
+HP_BASELINES=BASE_PATH / 'hp-feb-through-aug/hp/baseline/'
+HP_SHIFTED=BASE_PATH / 'hp-feb-through-aug/hp/shifted/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
@@ -37,9 +37,15 @@ def create_database_tables():
     NonFlexDevices.metadata.create_all(engine)
 
 
+def delete_device_type(device_type: DeviceType):
+    with Session(engine) as session:
+        doa = FlexDevicesDao(session)
+        doa.delete_device_type(device_type)
+
+
 def ev_from_file_to_db():
     areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).get_group(), EV_BASELINES.iterdir()))
-    print(list(areas)[:10])
+    print(f"Writing EV flex metrics to database. Amount of PC4 areas: {len(areas)}")
 
     for i, area in enumerate(areas):
         load_filter = ExperimentFilter().with_group(area)
@@ -53,6 +59,7 @@ def ev_from_file_to_db():
 
 def hp_from_file_to_db():
     hh_types = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.HP).get_group(), HP_BASELINES.iterdir()))
+    print(f"Writing HP flex metrics to database. Amount of household types: {len(hh_types)}")
     for i, hh_type in enumerate(hh_types):
         load_filter = ExperimentFilter().with_group(hh_type)
         hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments(load_filter)
@@ -91,17 +98,17 @@ def main() :
 
     args = parser.parse_args()
 
-
     if args.drop:
         drop_database_tables()
 
     create_database_tables()
 
-    if args.all or 'ev' in args.asset_type:
+    if args.all or (args.asset_type and 'ev' in args.asset_type):
         ev_from_file_to_db()
-    if args.all or 'hp' in args.asset_type:
+    if args.all or (args.asset_type and 'hp' in args.asset_type):
+        delete_device_type(DeviceType.HP)
         hp_from_file_to_db()
-    if args.all or 'sjv-pv' in args.asset_type:
+    if args.all or (args.asset_type and 'sjv-pv' in args.asset_type):
         gm_types()
 
 
