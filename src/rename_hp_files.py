@@ -5,21 +5,29 @@ from typing import Dict
 
 import pandas as pd
 
-INPUT_DIR="data/hp-input/flexprofielen_vrijst"
-SHIFTED_OUTPUT_DIR="data/hp/shifted/"
-BASELINE_OUTPUT_DIR="data/hp/baseline/"
+INPUT_DIR="data/hp-flex-profielen/combined"
+INPUT_BASELINE_DIR="data/hp-baseline-profielen"
+
+OUTPUT_SHIFTED_DIR="data/hp-feb-through-aug/shifted/"
+OUTPUT_BASELINE_DIR="data/hp-feb-through-aug/baseline/"
 
 DATETIME_FORMAT='%Y-%m-%dT%H%M'
 
 baselines_df: Dict[str, pd.DataFrame] = {}
 
-for baseline in Path(INPUT_DIR).glob('baselines*'):
-    print(baseline)
+for baseline in Path(INPUT_BASELINE_DIR).glob('baselines*'):
+    print(f"Loading baseline for {baseline.stem}")
     baselines_df[baseline.stem[len('baselines+'):]] = pd.read_csv(baseline, index_col=0, parse_dates=True)
 
 convert_cnt = 0
+files_written=0
+
 for exp_path in Path(INPUT_DIR).iterdir():
-    if (re.fullmatch("flex_profiles.*", exp_path.stem)):
+    if (re.fullmatch("infeasible_profile_nrs.*", exp_path.stem)):
+        with open(exp_path) as infeasible_profile:
+            amount_infeasible = len(infeasible_profile.readlines())
+            print(f"Experiment with {amount_infeasible} infeasible profiles")
+    elif (re.fullmatch("flex_profiles.*", exp_path.stem)):
         df = pd.read_csv(exp_path, index_col=0, parse_dates=True)
         flex_window_start :datetime = df.index[0]
         ptu_duration: timedelta = df.index[1] - df.index[0]
@@ -32,8 +40,12 @@ for exp_path in Path(INPUT_DIR).iterdir():
                     f"flexwindowduration{flex_window_duration}_"
                     f"congestionstart{cong_start.strftime(DATETIME_FORMAT)}_"
                     f"congestionduration{cong_dur}")
-        df.to_csv(SHIFTED_OUTPUT_DIR + new_name + ".csv", sep=';' )
-        baselines_df[exp_type][df.index[0]:df.index[-1]].to_csv(BASELINE_OUTPUT_DIR + new_name + ".csv", sep=';')
+        df.to_csv(OUTPUT_SHIFTED_DIR + new_name + ".csv", sep=';' )
+        out_path = Path(OUTPUT_BASELINE_DIR + new_name + ".csv")
+        if not out_path.exists():
+            baselines_df[exp_type][df.index[0]:df.index[-1]].to_csv(OUTPUT_BASELINE_DIR + new_name + ".csv", sep=';')
+            files_written += 1
         convert_cnt+=1
-print(f"Converted {convert_cnt} experiments")
-
+        if convert_cnt % 100 == 0:
+            print(f"Converted {convert_cnt} experiments. {convert_cnt - files_written} already existed")
+print(f"Converted {convert_cnt} experiments. {convert_cnt - files_written} already existed")
