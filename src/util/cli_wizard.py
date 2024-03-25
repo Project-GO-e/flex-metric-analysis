@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from db.flex_devices_dao import FlexDevicesDao
 from experiment.experiment_description import DeviceType
-from flex_metric_config import Config, EvConfig
+from flex_metric_config import EvConfig
 
 DB_FILE="flex-metrics.db"
 

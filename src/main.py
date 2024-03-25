@@ -1,9 +1,11 @@
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, NamedTuple
+from sys import exit
+from typing import Dict, Final, List, NamedTuple
 
 import numpy as np
+import pandas as pd
 from dataclass_binder import Binder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -13,9 +15,10 @@ from db.flex_devices_dao import FlexDevicesDao
 from db.non_flex_devices_dao import NonFlexDevicesDao
 from experiment.experiment_description import DeviceType
 from flex_metric_config import Config
+from util.cli_wizard import CliWizard
 
-DB_FILE="flex-metrics.db"
-CONFIG_FILE="config.toml"
+DB_FILE: Final[str]="flex-metrics.db"
+CONFIG_FILE: Final[str]="config.toml"
 
 
 class FlexAssetProfiles(NamedTuple):
@@ -30,7 +33,8 @@ class NonFlexAssetProfiles(NamedTuple):
 
 @dataclass
 class CliArgs():
-    conf_file: str
+    conf_file: Path
+    wizard_mode: bool
 
 
 class FlexMetrics():
@@ -114,17 +118,25 @@ class FlexMetrics():
         
         print("EV flex" + str(ev_flex))
         print("HP flex" + str(hp_flex))
+        res = {}
 
+
+        res["baseline"] = np.array(self.conf.baseline_total_W)
+        res["flex_ev"] = ev_flex
+        res["flex_hp"] = hp_flex
+        print("Baseline Power: " + str(np.array(self.conf.baseline_total_W)))
         if self.conf.all_baselines_available():
-            print("Baseline Power: " + str(np.array(self.conf.baseline_total_W)))
             print("Flexible load: " + str(ev_flex + hp_flex))
             print("Power after application of flex: " + str(np.array(self.conf.baseline_total_W) - ev_flex - hp_flex))
-            return ev_flex + hp_flex
+            res["flex_total"] = ev_flex + hp_flex
         else:
             print("Baseline Power: " + str(np.array(self.conf.baseline_total_W)))
             print("Flexible load: " + str(ev_flex + hp_flex))
             print("Power after application of flex: " + str(np.array(self.conf.baseline_total_W) - ev_flex - hp_flex))
-            return ev_flex + hp_flex / (ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline) * np.array(self.conf.baseline_total_W)
+            res["flex_total"] = ev_flex + hp_flex / (ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline) * np.array(self.conf.baseline_total_W)
+        
+        pd.DataFrame(res).round(2).to_excel("out.xlsx")
+        return res["flex_total"]
             
 
 def write_toml_template():
@@ -136,24 +148,26 @@ def write_toml_template():
 def parse_args() -> CliArgs:
     parser = ArgumentParser(prog="Flex Metrics Tool", description="" )
     parser.add_argument('-f', '--file', help="configuration file name")
-    
+    parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics with a cli wizard")
     args = parser.parse_args()
     conf_file = args.file if args.file else CONFIG_FILE
-
-    return CliArgs(conf_file)
+    return CliArgs(Path(conf_file), args.wizard)
 
 
 if __name__ == "__main__":
-    float_formatter = "{:.0f}".format
-    np.set_printoptions(formatter={'float_kind':float_formatter})
+    # float_formatter = "{:.0f}".format
+    # np.set_printoptions(formatter={'float_kind':float_formatter})
     
-    args = parse_args()
+    db_path = Path(DB_FILE) if Path(DB_FILE).exists() else Path("_internal") / DB_FILE
         
-    try:
-        FlexMetrics(Path(args.conf_file), Path(DB_FILE)).determine_flex_power()
-    except DataNotFoundException as e:
-        print("ERROR: " + str(e))
+    args = parse_args()
+    
+    if args.wizard_mode:
+        CliWizard().start()
+    else:
+        try:
+            FlexMetrics(args.conf_file, db_path).determine_flex_power()
+        except DataNotFoundException as e:
+            print("ERROR: " + str(e))
 
-    # write_toml_template()
-    # test_toml()
-    print("Done. Bye!")
+        
