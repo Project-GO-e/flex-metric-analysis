@@ -1,11 +1,11 @@
 
-# Flex metric post processing scripts
+# Fleximetrics
 
 ## Getting started
 
 ### Requirements
 
- - Python 3
+ - Python 3.10 or newer
  - Pip
 
 Optional:
@@ -23,8 +23,16 @@ Install dependencies:
 
 > pip install -r requirements.txt
 
-Make sure to put the input data in the `data` folder.
+Make sure to put the input data in the `data` folder. If you're just using the flex metrics database, you'll only need the database file
 
 ### Running
+```
+usage: src/main.py [-h] [-f FILE] [-w]
 
-> python src/main.py
+Flex Metrics Tool
+
+options:
+  -h, --help            show this help message and exit
+  -f FILE, --file FILE  configuration file name
+  -w, --wizard          run fleximetrics with a cli wizard
+```
