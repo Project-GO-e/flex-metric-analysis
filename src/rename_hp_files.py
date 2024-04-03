@@ -5,11 +5,11 @@ from typing import Dict
 
 import pandas as pd
 
-INPUT_DIR="data/hp-flex-profielen/combined"
+INPUT_FLEX_PROFILES_DIR="data/hp-flex-jan"
 INPUT_BASELINE_DIR="data/hp-baseline-profielen"
 
-OUTPUT_SHIFTED_DIR="data/hp-feb-through-aug/shifted/"
-OUTPUT_BASELINE_DIR="data/hp-feb-through-aug/baseline/"
+OUTPUT_SHIFTED_DIR="data/hp/shifted/"
+OUTPUT_BASELINE_DIR="data/hp/baseline/"
 
 DATETIME_FORMAT='%Y-%m-%dT%H%M'
 
@@ -22,7 +22,7 @@ for baseline in Path(INPUT_BASELINE_DIR).glob('baselines*'):
 convert_cnt = 0
 files_written=0
 
-for exp_path in Path(INPUT_DIR).iterdir():
+for exp_path in Path(INPUT_FLEX_PROFILES_DIR).iterdir():
     if (re.fullmatch("infeasible_profile_nrs.*", exp_path.stem)):
         with open(exp_path) as infeasible_profile:
             amount_infeasible = len(infeasible_profile.readlines())

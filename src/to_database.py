@@ -19,8 +19,8 @@ BASE_PATH=Path('data')
 EV_BASELINES=BASE_PATH / 'ev/baseline/'
 EV_SHIFTED=BASE_PATH / 'ev/shifted/'
 
-HP_BASELINES=BASE_PATH / 'hp-feb-through-aug/hp/baseline/'
-HP_SHIFTED=BASE_PATH / 'hp-feb-through-aug/hp/shifted/'
+HP_BASELINES=BASE_PATH / 'hp/baseline/'
+HP_SHIFTED=BASE_PATH / 'hp/shifted/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
