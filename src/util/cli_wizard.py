@@ -76,8 +76,8 @@ class CliWizard():
             hp_baseline = CliWizard.__read_profile("Heat pump total load profile.", cong_dur)
             with Session(CliWizard.engine) as session:
                 doa = FlexDevicesDao(session)
-                ev_flex_metrics = doa.get_flex_metrics(asset_type=DeviceType.EV, cong_start=cong_start, cong_dur=cong_dur, group=ev_group, typical_day=ev_typical_day)
-                hp_flex_metrics = doa.get_flex_metrics(asset_type=DeviceType.HP, cong_start=cong_start, cong_dur=cong_dur, group=hp_group, typical_day=hp_typical_day)
+                ev_flex_metrics = doa.get_flex_metrics(device_type=DeviceType.EV, cong_start=cong_start, cong_dur=cong_dur, group=ev_group, typical_day=ev_typical_day)
+                hp_flex_metrics = doa.get_flex_metrics(device_type=DeviceType.HP, cong_start=cong_start, cong_dur=cong_dur, group=hp_group, typical_day=hp_typical_day)
             
             ev_flex = np.array(ev_flex_metrics) * np.array(ev_baseline)
             print("EV flex" + str(ev_flex))

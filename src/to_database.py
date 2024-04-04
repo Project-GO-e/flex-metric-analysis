@@ -5,9 +5,10 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from db.baselines_dao import BaselineDao
 from db.flex_devices_dao import FlexDevicesDao
-from db.models import FlexDevices, NonFlexDevices
-from db.non_flex_devices_dao import NonFlexDevicesDao
+from db.models import Baseline, FlexMetric
+from experiment.experiment_container import ExperimentContainer
 from experiment.experiment_description import DeviceType, ExperimentDescription
 from experiment.experiment_filter import ExperimentFilter
 from experiment.experiment_loader import FileLoader
@@ -16,11 +17,11 @@ from util.conflex import (get_daily_pv_expectation_values,
 
 BASE_PATH=Path('data')
 
-EV_BASELINES=BASE_PATH / 'ev/baseline/'
-EV_SHIFTED=BASE_PATH / 'ev/shifted/'
+EV_BASELINES=BASE_PATH / 'ev_pc46651/ev/baseline/'
+EV_SHIFTED=BASE_PATH / 'ev_pc46651/ev/shifted/'
 
-HP_BASELINES=BASE_PATH / 'hp/baseline/'
-HP_SHIFTED=BASE_PATH / 'hp/shifted/'
+HP_BASELINES=BASE_PATH / 'test/hp/baseline/'
+HP_SHIFTED=BASE_PATH / 'test/hp/shifted/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
@@ -28,13 +29,13 @@ engine = create_engine("sqlite:///flex-metrics.db", echo=False)
 
 
 def drop_database_tables():
-    FlexDevices.metadata.drop_all(engine)
-    NonFlexDevices.metadata.drop_all(engine)
+    FlexMetric.metadata.drop_all(engine)
+    Baseline.metadata.drop_all(engine)
 
 
 def create_database_tables():
-    FlexDevices.metadata.create_all(engine)
-    NonFlexDevices.metadata.create_all(engine)
+    FlexMetric.metadata.create_all(engine)
+    Baseline.metadata.create_all(engine)
 
 
 def delete_device_type(device_type: DeviceType):
@@ -49,11 +50,14 @@ def ev_from_file_to_db():
 
     for i, area in enumerate(areas):
         load_filter = ExperimentFilter().with_group(area)
-        all_experiments = FileLoader(baselines_dir=EV_BASELINES, shifted_dir=EV_SHIFTED).load_experiments(load_filter)
+        all_experiments: ExperimentContainer = FileLoader(baselines_dir=EV_BASELINES, shifted_dir=EV_SHIFTED).load_experiments(load_filter)
 
         with Session(engine) as session:
             doa = FlexDevicesDao(session)
             doa.save_container(all_experiments)
+            baseline_dao = BaselineDao(session)
+            for e in all_experiments.exp.values():
+                baseline_dao.save_experiment(e)
         print(f"Written {i + 1} / {len(areas)} pc4 areas to database.")
 
 
@@ -65,7 +69,10 @@ def hp_from_file_to_db():
         hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments(load_filter)
         with Session(engine) as session:
             doa = FlexDevicesDao(session)
+            baseline_dao = BaselineDao(session)
             doa.save_container(hp_experiments)
+            for e in hp_experiments.exp.values():
+                baseline_dao.save_experiment(e)
         print(f"Written {i + 1} / {len(hh_types)} household_types to database.")
 
 
@@ -78,16 +85,20 @@ def gm_types():
     for day_type in day_types:
         for month_idx in range(1, 13):
             for t in gm_types:
+                group: str
                 if t.startswith('sjv'):
                     expectation_value = get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)
+                    group = t
                     print(t + " - Expectation value: " + str(expectation_value))
                 elif t.startswith('PV'):
                     expectation_value = get_daily_pv_expectation_values(t, gm_df, day_type, month_idx)
+                    group = 'pv'
                     print(t + " - Expectation value: " + str(expectation_value))
-                month = datetime(2020,month_idx,1).strftime('%B')
+                month = datetime(2020, month_idx, 1).strftime('%B')
+
                 with Session(engine) as session:
-                    doa = NonFlexDevicesDao(session)
-                    doa.save(asset_type=t, typical_day=f"{month}_{day_type}", mean_power=expectation_value)
+                    doa = BaselineDao(session)
+                    doa.save(device_type=DeviceType.from_string(t), typical_day=f"{month}_{day_type}", group=group, mean_power=expectation_value)
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )

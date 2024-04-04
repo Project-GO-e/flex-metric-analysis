@@ -22,9 +22,10 @@ class Experiment:
         self.exp_des = experiment_description
         self.ptu_duration: timedelta = baseline.index[1] - baseline.index[0]
         congestion_end = self.get_congestion_start() + (self.get_congestion_duration() - 1) * self.ptu_duration
-        self.__baseline = baseline[self.get_congestion_start() : congestion_end]
+        self.__baseline = baseline
+
         self.__shifted = shifted[self.get_congestion_start(): congestion_end]
-        mean_baseline = self.__baseline.mean(axis=1)
+        mean_baseline = self.__baseline[self.get_congestion_start() : congestion_end].mean(axis=1)
         self.__mean_weighted_flex_metric: pd.Series = (mean_baseline - self.__shifted.mean(axis=1)) / mean_baseline
 
 

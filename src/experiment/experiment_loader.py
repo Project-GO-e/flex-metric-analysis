@@ -1,5 +1,6 @@
+from datetime import datetime, time
 from pathlib import Path, PurePath
-from time import time
+from time import time as time_s
 
 import pandas as pd
 
@@ -29,7 +30,7 @@ class FileLoader():
         missing_shifted_file = False
         device_type = DeviceType.from_string(PurePath(self.baselines_dir).parts[-2])
         print(f"Loading experiments from files...")
-        t = time()
+        t = time_s()
         all_experiments = list(filter(lambda e: ExperimentDescription.validate_name(e.stem), self.baselines_dir.iterdir()))
         for cnt_checked, exp_path in enumerate(all_experiments):
             description = ExperimentDescription(exp_path.stem, device_type)
@@ -38,15 +39,17 @@ class FileLoader():
             if experiment_filter.passFilter(description):                    
                 shifted_path = self.shifted_dir / exp_path.name
                 try:
-                    df_baseline = FileLoader.__load_file(exp_path)
+                    day = description.get_congestion_start().date()
+                    df_baseline: pd.DataFrame = FileLoader.__load_file(exp_path)
                     df_shifted = FileLoader.__load_file(shifted_path)
-                    loaded_experiments[description.name] = Experiment(df_baseline, df_shifted, description)
+                    idx = df_baseline.index.get_loc(datetime.combine(day, time()))
+                    loaded_experiments[description.name] = Experiment(df_baseline.iloc[idx:idx+96], df_shifted, description)
                 except FileNotFoundError as e:
                     missing_shifted_file = True
                     print("ERROR: Experiment '" + e.filename + "' doesn't have a shifted input data file")
         # Fast fail approach:
         if missing_shifted_file : exit(1)
-        print(f"Experiments loaded successfully. Loaded {len(loaded_experiments)} / {cnt_checked} experiments in {round(time() - t)} seconds.")
+        print(f"Experiments loaded successfully. Loaded {len(loaded_experiments)} / {cnt_checked} experiments in {round(time_s() - t)} seconds.")
         return ExperimentContainer(loaded_experiments)
     
 

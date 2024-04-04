@@ -63,8 +63,8 @@ class Config:
     '''Duration of the congestion in amount of PTU (15min)'''
     ev: EvConfig
     hp: HpConfig
-    pv: PvConfig
-    non_flexible_load: BaseloadConfig
+    pv: PvConfig = None
+    non_flexible_load: BaseloadConfig = None
     baseline_total_W: List[float] = None
     '''The summed baseline in Watt of all devices in the scenario. This will only be used if individual asset type profiles are not provided'''
 

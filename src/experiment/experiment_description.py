@@ -3,21 +3,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from enum import Enum
 
 from dateutil import parser
 
+from experiment.device_type import DeviceType
 
-class DeviceType(Enum):
-    EV = 1
-    HP = 2
-    
-    @classmethod
-    def from_string(cls, device_type: str) -> DeviceType:
-        return cls[device_type.upper()]
-
-    def __str__(self) -> str:
-        return self.name
 
 class ExperimentDescription():
 
