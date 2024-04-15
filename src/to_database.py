@@ -17,11 +17,11 @@ from util.conflex import (get_daily_pv_expectation_values,
 
 BASE_PATH=Path('data')
 
-EV_BASELINES=BASE_PATH / 'ev_pc46651/ev/baseline/'
-EV_SHIFTED=BASE_PATH / 'ev_pc46651/ev/shifted/'
+EV_BASELINES=BASE_PATH / 'ev/baselines/'
+EV_SHIFTED=BASE_PATH / 'ev/shifted/'
 
-HP_BASELINES=BASE_PATH / 'test/hp/baseline/'
-HP_SHIFTED=BASE_PATH / 'test/hp/shifted/'
+HP_BASELINES=BASE_PATH / 'hp/baselines/'
+HP_SHIFTED=BASE_PATH / 'hp/shifted-1/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
@@ -62,10 +62,13 @@ def ev_from_file_to_db():
 
 
 def hp_from_file_to_db():
-    hh_types = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.HP).get_group(), HP_BASELINES.iterdir()))
+    descriptions = list(map(lambda e: ExperimentDescription(e.stem, DeviceType.HP), HP_SHIFTED.iterdir()))
+    hh_types = set(map(lambda x : x.get_group(), descriptions))
     print(f"Writing HP flex metrics to database. Amount of household types: {len(hh_types)}")
+    
     for i, hh_type in enumerate(hh_types):
         load_filter = ExperimentFilter().with_group(hh_type)
+        
         hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments(load_filter)
         with Session(engine) as session:
             doa = FlexDevicesDao(session)
@@ -86,19 +89,21 @@ def gm_types():
         for month_idx in range(1, 13):
             for t in gm_types:
                 group: str
+                month = datetime(2020, month_idx, 1).strftime('%B')
                 if t.startswith('sjv'):
                     expectation_value = get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)
                     group = t
-                    print(t + " - Expectation value: " + str(expectation_value))
+                    device_type = DeviceType.SJV
+                    print(f"{t} - {month} - {day_type}")
                 elif t.startswith('PV'):
                     expectation_value = get_daily_pv_expectation_values(t, gm_df, day_type, month_idx)
                     group = 'pv'
+                    device_type = DeviceType.PV
                     print(t + " - Expectation value: " + str(expectation_value))
-                month = datetime(2020, month_idx, 1).strftime('%B')
 
                 with Session(engine) as session:
                     doa = BaselineDao(session)
-                    doa.save(device_type=DeviceType.from_string(t), typical_day=f"{month}_{day_type}", group=group, mean_power=expectation_value)
+                    doa.save(device_type=device_type, typical_day=f"{month}_{day_type}", group=group, mean_power=expectation_value)
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
@@ -114,10 +119,10 @@ def main() :
 
     create_database_tables()
 
+    hp_from_file_to_db()
     if args.all or (args.asset_type and 'ev' in args.asset_type):
         ev_from_file_to_db()
     if args.all or (args.asset_type and 'hp' in args.asset_type):
-        delete_device_type(DeviceType.HP)
         hp_from_file_to_db()
     if args.all or (args.asset_type and 'sjv-pv' in args.asset_type):
         gm_types()

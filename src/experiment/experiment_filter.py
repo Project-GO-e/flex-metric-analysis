@@ -48,7 +48,7 @@ class ExperimentFilter():
         self.cong_durations.extend(cong_duration)
         return self
     
-    def passFilter(self, description: ExperimentDescription) -> bool:
+    def pass_filter(self, description: ExperimentDescription) -> bool:
         return (description.get_group() in self.groups or len(self.groups) == 0) and \
                 (description.get_flexwindow_duration() in self.flex_window_durations or len(self.flex_window_durations) == 0 ) and \
                 (description.get_congestion_start() in self.cong_starts or len(self.cong_starts) == 0 ) and \

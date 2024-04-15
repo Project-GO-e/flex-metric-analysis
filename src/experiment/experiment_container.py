@@ -14,7 +14,7 @@ class ExperimentContainer():
 
 
     def filter(self, filter: ExperimentFilter) -> ExperimentContainer:
-        filtered_experiments = {k: v for k, v in self.exp.items() if filter.passFilter(v.exp_des)}
+        filtered_experiments = {k: v for k, v in self.exp.items() if filter.pass_filter(v.exp_des)}
         return ExperimentContainer(filtered_experiments)           
 
 
