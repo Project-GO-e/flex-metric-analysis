@@ -1,23 +1,24 @@
 import re
 from datetime import datetime, time, timedelta
 from pathlib import Path
-from typing import Dict
 
 import pandas as pd
 
-INPUT_FLEX_PROFILES_DIR="data/hp-flex-jan"
-INPUT_BASELINE_DIR="data/hp-baseline-profielen"
+INPUT_BASELINE_DIR="data/baselines_hp"
+INPUT_FLEX_PROFILES_DIR="data/flex_profiles_hp"
 
+OUTPUT_BASELINE_DIR="data/hp/baselines/"
 OUTPUT_SHIFTED_DIR="data/hp/shifted/"
-OUTPUT_BASELINE_DIR="data/hp/baseline/"
 
 DATETIME_FORMAT='%Y-%m-%dT%H%M'
 
-baselines_df: Dict[str, pd.DataFrame] = {}
+FORCE_OVERWRITE=False
 
-for baseline in Path(INPUT_BASELINE_DIR).glob('baselines*'):
-    print(f"Loading baseline for {baseline.stem}")
-    baselines_df[baseline.stem[len('baselines+'):]] = pd.read_csv(baseline, index_col=0, parse_dates=True)
+
+# for baseline in Path(INPUT_BASELINE_DIR).glob('baselines*'):
+#     print(f"Loading baseline for {baseline.stem}")
+#     baselines_df= pd.read_csv(baseline, index_col=0, parse_dates=True)
+#     baselines_df.to_csv(OUTPUT_BASELINE_DIR + "/" + baseline.name, sep=';')
 
 convert_cnt = 0
 files_written=0
@@ -40,10 +41,10 @@ for exp_path in Path(INPUT_FLEX_PROFILES_DIR).iterdir():
                     f"flexwindowduration{flex_window_duration}_"
                     f"congestionstart{cong_start.strftime(DATETIME_FORMAT)}_"
                     f"congestionduration{cong_dur}")
-        df.to_csv(OUTPUT_SHIFTED_DIR + new_name + ".csv", sep=';' )
-        out_path = Path(OUTPUT_BASELINE_DIR + new_name + ".csv")
-        if not out_path.exists():
-            baselines_df[exp_type][df.index[0]:df.index[-1]].to_csv(OUTPUT_BASELINE_DIR + new_name + ".csv", sep=';')
+                
+        out_path = Path(OUTPUT_SHIFTED_DIR + new_name + ".csv")
+        if not out_path.exists() or FORCE_OVERWRITE:
+            df.to_csv(out_path, sep=';' )
             files_written += 1
         convert_cnt+=1
         if convert_cnt % 100 == 0:
