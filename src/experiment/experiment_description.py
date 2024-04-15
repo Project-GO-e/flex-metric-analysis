@@ -3,21 +3,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from enum import Enum
 
 from dateutil import parser
 
+from experiment.device_type import DeviceType
 
-class DeviceType(Enum):
-    EV = 1
-    HP = 2
-    
-    @classmethod
-    def from_string(cls, device_type: str) -> DeviceType:
-        return cls[device_type.upper()]
-
-    def __str__(self) -> str:
-        return self.name
 
 class ExperimentDescription():
 
@@ -27,9 +17,9 @@ class ExperimentDescription():
 
     @staticmethod
     def validate_name(exp_name: str) -> bool:
-        v1_match = re.fullmatch(ExperimentDescription.ev_regex_v1, exp_name)
-        v2_match = re.fullmatch(ExperimentDescription.ev_regex_v2, exp_name)
-        hp_match = re.fullmatch(ExperimentDescription.hp_regex, exp_name)
+        v1_match = bool(re.fullmatch(ExperimentDescription.ev_regex_v1, exp_name))
+        v2_match = bool(re.fullmatch(ExperimentDescription.ev_regex_v2, exp_name))
+        hp_match = bool(re.fullmatch(ExperimentDescription.hp_regex, exp_name))
         return v1_match or v2_match or hp_match
 
 
@@ -65,6 +55,22 @@ class ExperimentDescription():
         elif re.fullmatch(ExperimentDescription.hp_regex, experiment_name):
             self.group : str = re.findall(".*_flexwindowstart", experiment_name)[0].removesuffix('_flexwindowstart')
 
+
+    def get_flex_file_name(self) -> str:
+        dt_fmt = "%Y-%m%dT%H%M"
+        if self.device_type is DeviceType.EV:
+            return f"pc4{self.group}_flexwindowstart{self.flexwindow_start.strftime(dt_fmt)}_flexwindowduration{self.flexwindow_start}_congestionstart{self.congestion_start.strftime(dt_fmt)}_congestionduration{self.congestion_duration}"        
+        elif self.device_type is DeviceType.HP:
+            return f"flex_profiles+{self.group}+start{28}+dur{self.congestion_duration}month{self.flexwindow_start.month}"
+
+
+    def get_baseline_file_name(self) -> str:
+        dt_fmt = "%Y-%m-%dT%H%M"
+        if self.device_type is DeviceType.EV:
+            return f"pc4{self.group}_flexwindowstart{self.flexwindow_start.strftime(dt_fmt)}_flexwindowduration{self.flexwindow_duration}_congestionstart{self.congestion_start.strftime(dt_fmt)}_congestionduration{self.congestion_duration}"        
+        elif self.device_type is DeviceType.HP:
+            return f"baselines+{self.group}"
+        
 
     def get_group(self) -> str:
         return self.group

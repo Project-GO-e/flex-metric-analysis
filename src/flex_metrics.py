@@ -10,9 +10,8 @@ from dataclass_binder import Binder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from db.data_not_found_exception import DataNotFoundException
+from db.baselines_dao import BaselineDao
 from db.flex_devices_dao import FlexDevicesDao
-from db.non_flex_devices_dao import NonFlexDevicesDao
 from experiment.experiment_description import DeviceType
 from flex_metric_config import Config
 
@@ -60,21 +59,21 @@ class FlexMetrics():
     
     def fetch_flex_asset_baselines(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
-            dao = FlexDevicesDao(session)
-            ev = dao.get_baseline(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
+            dao = BaselineDao(session)
+            ev = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4)
             hp_baselines : Dict[str, List[float]] = {}
             for hp in self.conf.hp.house_type:
-                hp_baselines[hp.name] = dao.get_baseline(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
+                hp_baselines[hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name)
         return FlexAssetProfiles(ev, hp_baselines)
 
 
     def fetch_non_flex_asset_baselines(self) -> NonFlexAssetProfiles:
         with Session(self.engine) as session:
-            dao = NonFlexDevicesDao(session)
-            pv = dao.get_baseline('PV', self.conf.congestion_start, self.conf.congestion_duration, self.conf.pv.typical_day)
+            dao = BaselineDao(session)
+            pv = dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')
             sjv_baselines : Dict[str, List[float]] = {}
             for sjv in self.conf.non_flexible_load.sjv:
-                sjv_baselines[sjv.name] = dao.get_baseline(sjv.name, self.conf.congestion_start, self.conf.congestion_duration, self.conf.non_flexible_load.typical_day)
+                sjv_baselines[sjv.name] = dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)
         return NonFlexAssetProfiles(pv, sjv_baselines)
 
 
