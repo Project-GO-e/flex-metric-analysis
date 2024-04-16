@@ -61,8 +61,7 @@ class FlexMetrics():
             baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
             baselines['sjv'] = 96 * [0]
             for sjv in self.conf.non_flexible_load.sjv:
-                # TODO: the baseline seems to be in kW. Change database content to W.
-                baselines['sjv'] += np.array(dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)) * sjv.amount * 1000
+                baselines['sjv'] += np.array(dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)) * sjv.amount
         return baselines.round(1)
 
     def determine_flex_power(self) -> np.array:
@@ -81,8 +80,7 @@ class FlexMetrics():
             pv_baseline = np.array(non_flex_profiles.pv) * self.conf.pv.peak_power_W
             sjv_baseline = 0
             for sjv_type in self.conf.non_flexible_load.sjv:
-                # TODO: the baseline seems to be in kW. Change database content to W.
-                sjv_baseline += np.array(non_flex_profiles.sjv[sjv_type.name]) * sjv_type.amount * 1000
+                sjv_baseline += np.array(non_flex_profiles.sjv[sjv_type.name]) * sjv_type.amount
 
         ev_flex = np.array(flex_metrics.ev) * ev_baseline
         hp_flex = np.zeros(len(flex_metrics.ev))

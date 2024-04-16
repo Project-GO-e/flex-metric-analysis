@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -91,10 +92,12 @@ def gm_types():
                 group: str
                 month = datetime(2020, month_idx, 1).strftime('%B')
                 if t.startswith('sjv'):
-                    expectation_value = get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)
+                    # Convert expectation values from kW to W
+                    expectation_value = np.array(get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)) * 1000
                     group = t
                     device_type = DeviceType.SJV
                 elif t.startswith('PV'):
+                    # It seems that the profiles are normalized to 1, so no need to scale
                     expectation_value = get_daily_pv_expectation_values(t, gm_df, day_type, month_idx)
                     group = 'pv'
                     device_type = DeviceType.PV
