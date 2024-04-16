@@ -21,11 +21,6 @@ class FlexAssetProfiles(NamedTuple):
     hp: Dict[str,List[float]]
 
 
-class NonFlexAssetProfiles(NamedTuple):
-    pv: List[float]
-    sjv: Dict[str,List[float]]
-
-
 class FlexMetrics():
 
     def __init__(self, config_file: Path, db_file: Path) -> None:
@@ -46,7 +41,6 @@ class FlexMetrics():
             print("Configuration invalid. Exiting...")
             exit(1)
 
-
     def fetch_flex_metrics(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
             dao = FlexDevicesDao(session)
@@ -55,27 +49,21 @@ class FlexMetrics():
             for hp in self.conf.hp.house_type:
                 hp_fm[hp.name] = dao.get_flex_metrics(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
         return FlexAssetProfiles(ev_fm, hp_fm)
-
     
-    def fetch_flex_asset_baselines(self) -> FlexAssetProfiles:
+    def fetch_baselines(self) -> pd.DataFrame:
         with Session(self.engine) as session:
+            baselines: pd.DataFrame = pd.DataFrame(index=range(0,96))
             dao = BaselineDao(session)
-            ev = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4)
-            hp_baselines : Dict[str, List[float]] = {}
+            baselines['ev'] = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4).values * self.conf.ev.amount
+            baselines['hp'] = 96 * [0]
             for hp in self.conf.hp.house_type:
-                hp_baselines[hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name)
-        return FlexAssetProfiles(ev, hp_baselines)
-
-
-    def fetch_non_flex_asset_baselines(self) -> NonFlexAssetProfiles:
-        with Session(self.engine) as session:
-            dao = BaselineDao(session)
-            pv = dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')
-            sjv_baselines : Dict[str, List[float]] = {}
+                baselines['hp'] += dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
+            baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
+            baselines['sjv'] = 96 * [0]
             for sjv in self.conf.non_flexible_load.sjv:
-                sjv_baselines[sjv.name] = dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)
-        return NonFlexAssetProfiles(pv, sjv_baselines)
-
+                # TODO: the baseline seems to be in kW. Change database content to W.
+                baselines['sjv'] += np.array(dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)) * sjv.amount * 1000
+        return baselines.round(1)
 
     def determine_flex_power(self) -> np.array:
         flex_metrics = self.fetch_flex_metrics()
@@ -89,14 +77,12 @@ class FlexMetrics():
             for hp_type in self.conf.hp.house_type:
                 hp_baselines[hp_type.name] = np.array(profiles.hp[hp_type.name]) * hp_type.amount
 
-            non_flex_profiles = self.fetch_non_flex_asset_baselines()
-            # TODO: the pv profile seems to be in kW. Change database content to W.
-            pv_baseline = np.array(non_flex_profiles.pv) * self.conf.pv.peak_power_W / 1000
+            non_flex_profiles = self.fetch_baselines()
+            pv_baseline = np.array(non_flex_profiles.pv) * self.conf.pv.peak_power_W
             sjv_baseline = 0
             for sjv_type in self.conf.non_flexible_load.sjv:
                 # TODO: the baseline seems to be in kW. Change database content to W.
                 sjv_baseline += np.array(non_flex_profiles.sjv[sjv_type.name]) * sjv_type.amount * 1000
-        
 
         ev_flex = np.array(flex_metrics.ev) * ev_baseline
         hp_flex = np.zeros(len(flex_metrics.ev))

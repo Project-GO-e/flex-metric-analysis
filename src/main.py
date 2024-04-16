@@ -17,6 +17,7 @@ CONFIG_FILE: Final[str]="config.toml"
 @dataclass
 class CliArgs():
     conf_file: Path
+    baselines_only: bool
     wizard_mode: bool
             
 
@@ -29,15 +30,21 @@ def write_toml_template():
 def parse_args() -> CliArgs:
     parser = ArgumentParser(prog="src/main.py", description="Flex Metrics Tool" )
     parser.add_argument('-f', '--file', help="configuration file name")
-    parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics with a cli wizard")
+    parser.add_argument('-b', '--baselines', action='store_true', help="get only the baselines from database")
+    parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics wizard to explore the database contents")
     args = parser.parse_args()
     conf_file = args.file if args.file else CONFIG_FILE
-    return CliArgs(Path(conf_file), args.wizard)
-
+    return CliArgs(Path(conf_file), args.baselines, args.wizard)
 
 def run_flex_metrics_calculation(db_path: Path, args: CliArgs):
     try:
         FlexMetrics(args.conf_file, db_path).determine_flex_power()
+    except DataNotFoundException as e:
+        print("ERROR: " + str(e))
+
+def fetch_baselines(db_path: Path, args: CliArgs):
+    try:
+        FlexMetrics(args.conf_file, db_path).fetch_baselines().to_csv("baselines.csv")
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
@@ -50,6 +57,8 @@ if __name__ == "__main__":
     
     if args.wizard_mode:
         CliWizard().start()
+    elif args.baselines_only:
+        fetch_baselines(db_path, args)
     else:
         run_flex_metrics_calculation(db_path, args)
 
