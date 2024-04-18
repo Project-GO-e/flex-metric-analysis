@@ -5,6 +5,7 @@ from typing import Final
 
 from dataclass_binder import Binder
 
+from config_converter import ExcelConverter
 from db.data_not_found_exception import DataNotFoundException
 from flex_metric_config import Config
 from flex_metrics import FlexMetrics
@@ -25,7 +26,6 @@ def write_toml_template():
     with open("config.toml.template", "w") as out:
         for line in Binder(Config).format_toml():
             print(line, file=out)
-
     
 def parse_args() -> CliArgs:
     parser = ArgumentParser(prog="src/main.py", description="Flex Metrics Tool" )
@@ -36,18 +36,38 @@ def parse_args() -> CliArgs:
     conf_file = args.file if args.file else CONFIG_FILE
     return CliArgs(Path(conf_file), args.baselines, args.wizard)
 
-def run_flex_metrics_calculation(db_path: Path, args: CliArgs):
+def flex_metrics_calculation(db_path: Path, conf: Config):
     try:
-        FlexMetrics(args.conf_file, db_path).determine_flex_power()
+        FlexMetrics(conf, db_path).determine_flex_power()
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
-def fetch_baselines(db_path: Path, args: CliArgs):
+def fetch_baselines(db_path: Path, conf: Config):
     try:
-        FlexMetrics(args.conf_file, db_path).fetch_baselines().to_csv("baselines.csv")
+        FlexMetrics(conf, db_path).fetch_baselines().to_csv("baselines.csv")
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
+def read_config(config_file: Path) -> Config:
+    if Path(args.conf_file).suffix == ".toml":
+        try:
+            conf = Binder(Config).parse_toml(config_file)
+        except ValueError as e:
+            print("Configuration invalid. " + str(e) +"\nExiting...")
+            exit(1)
+        except FileNotFoundError:
+            print(f"Configuration file '{config_file}' not found." + "\nExiting...")
+            exit(1)
+    if Path(args.conf_file).suffix == ".xlsx":
+        try:
+            conf = ExcelConverter(config_file=config_file).convert()
+        except FileNotFoundError:
+            print(f"Configuration file '{config_file}' not found." + "\nExiting...")
+            exit(1)
+    if not conf.is_valid():
+        print("Configuration invalid. Exiting...")
+        exit(1)
+    return conf
 
 if __name__ == "__main__":
     
@@ -58,8 +78,6 @@ if __name__ == "__main__":
     if args.wizard_mode:
         CliWizard().start()
     elif args.baselines_only:
-        fetch_baselines(db_path, args)
+        fetch_baselines(db_path, read_config(args.conf_file))
     else:
-        run_flex_metrics_calculation(db_path, args)
-
-        
+        flex_metrics_calculation(db_path, read_config(args.conf_file))
