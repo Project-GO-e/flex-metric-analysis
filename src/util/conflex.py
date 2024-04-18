@@ -207,7 +207,6 @@ def get_single_PV_Expectaction_Value(GMname, df, context, installed_power_):
 
 
 
-
 def main() :
     buurtdf = readGM(CONFIG_DIR + BUURT_FILE)
     GMdf = readGM(CONFIG_DIR + GM_TYPE_FILE)
@@ -224,7 +223,6 @@ def main() :
             expectation_value = get_single_PV_Expectaction_Value(node.loc['GMname'], GMdf, context, node.loc['installed_power'])
             print(node.loc['GMtype'] + "/" + node.loc['GMname'] + " - Expectation value: " + str(expectation_value))
 
-    return
 
 if __name__ == "__main__":
     main()

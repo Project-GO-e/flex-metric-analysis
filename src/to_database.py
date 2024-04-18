@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -21,7 +22,7 @@ EV_BASELINES=BASE_PATH / 'ev/baselines/'
 EV_SHIFTED=BASE_PATH / 'ev/shifted/'
 
 HP_BASELINES=BASE_PATH / 'hp/baselines/'
-HP_SHIFTED=BASE_PATH / 'hp/shifted-1/'
+HP_SHIFTED=BASE_PATH / 'hp/shifted-12/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
@@ -91,19 +92,20 @@ def gm_types():
                 group: str
                 month = datetime(2020, month_idx, 1).strftime('%B')
                 if t.startswith('sjv'):
-                    expectation_value = get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)
+                    # Convert expectation values from kW to W
+                    expectation_value = np.array(get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)) * 1000
                     group = t
                     device_type = DeviceType.SJV
-                    print(f"{t} - {month} - {day_type}")
                 elif t.startswith('PV'):
+                    # It seems that the profiles are normalized to 1, so no need to scale
                     expectation_value = get_daily_pv_expectation_values(t, gm_df, day_type, month_idx)
                     group = 'pv'
                     device_type = DeviceType.PV
-                    print(t + " - Expectation value: " + str(expectation_value))
+                print(f"{t} - {month} - {day_type}")
 
                 with Session(engine) as session:
                     doa = BaselineDao(session)
-                    doa.save(device_type=device_type, typical_day=f"{month}_{day_type}", group=group, mean_power=expectation_value)
+                    doa.save(device_type=device_type, typical_day=f"{month}_{day_type}".lower(), group=group.lower(), mean_power=expectation_value)
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
@@ -119,7 +121,6 @@ def main() :
 
     create_database_tables()
 
-    hp_from_file_to_db()
     if args.all or (args.asset_type and 'ev' in args.asset_type):
         ev_from_file_to_db()
     if args.all or (args.asset_type and 'hp' in args.asset_type):

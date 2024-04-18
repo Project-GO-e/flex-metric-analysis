@@ -23,14 +23,13 @@ class ExperimentDescription():
         return v1_match or v2_match or hp_match
 
 
-    def determine_typical_day(self):
+    def determine_typical_day(self) -> str:
         match self.device_type:
             case DeviceType.EV:
                 return "workday" if self.congestion_start.weekday() < 5 else "weekendday"
             case DeviceType.HP:
-                return self.congestion_start.strftime('%B')
-            case other:
-                return ""
+                return self.congestion_start.strftime('%B').lower()
+        return ""
     
 
     def __init__(self, expirement_name: str, device_type: DeviceType) -> None:

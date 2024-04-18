@@ -5,6 +5,7 @@ from typing import Final
 
 from dataclass_binder import Binder
 
+from config_converter import ExcelConverter
 from db.data_not_found_exception import DataNotFoundException
 from flex_metric_config import Config
 from flex_metrics import FlexMetrics
@@ -17,6 +18,7 @@ CONFIG_FILE: Final[str]="config.toml"
 @dataclass
 class CliArgs():
     conf_file: Path
+    baselines_only: bool
     wizard_mode: bool
             
 
@@ -24,23 +26,54 @@ def write_toml_template():
     with open("config.toml.template", "w") as out:
         for line in Binder(Config).format_toml():
             print(line, file=out)
-
     
 def parse_args() -> CliArgs:
     parser = ArgumentParser(prog="src/main.py", description="Flex Metrics Tool" )
     parser.add_argument('-f', '--file', help="configuration file name")
-    parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics with a cli wizard")
+    parser.add_argument('-b', '--baselines', action='store_true', help="get only the baselines from database")
+    parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics wizard to explore the database contents")
     args = parser.parse_args()
     conf_file = args.file if args.file else CONFIG_FILE
-    return CliArgs(Path(conf_file), args.wizard)
+    return CliArgs(Path(conf_file), args.baselines, args.wizard)
 
-
-def run_flex_metrics_calculation(db_path: Path, args: CliArgs):
+def flex_metrics_calculation(db_path: Path, conf: Config):
     try:
-        FlexMetrics(args.conf_file, db_path).determine_flex_power()
+        FlexMetrics(conf, db_path).determine_flex_power()
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
+def baselines_to_file(db_path: Path, conf: Config):
+    try:
+        baselines_df = FlexMetrics(conf, db_path).fetch_baselines()
+        # Reduce the heat pump baseline profiles:
+        hp_baseline = baselines_df.filter(regex="hp-")
+        baselines_df.drop(list(hp_baseline), axis=1, inplace=True)
+        baselines_df["hp"] = hp_baseline.sum(axis=1)
+        baselines_df["all"] = baselines_df.sum(axis=1)
+        baselines_df.to_csv("baselines.csv")
+    except DataNotFoundException as e:
+        print("ERROR: " + str(e))
+
+def read_config(config_file: Path) -> Config:
+    if Path(args.conf_file).suffix == ".toml":
+        try:
+            conf = Binder(Config).parse_toml(config_file)
+        except ValueError as e:
+            print("Configuration invalid. " + str(e) +"\nExiting...")
+            exit(1)
+        except FileNotFoundError:
+            print(f"Configuration file '{config_file}' not found." + "\nExiting...")
+            exit(1)
+    if Path(args.conf_file).suffix == ".xlsx":
+        try:
+            conf = ExcelConverter(config_file=config_file).convert()
+        except FileNotFoundError:
+            print(f"Configuration file '{config_file}' not found." + "\nExiting...")
+            exit(1)
+    if not conf.is_valid():
+        print("Configuration invalid. Exiting...")
+        exit(1)
+    return conf
 
 if __name__ == "__main__":
     
@@ -50,7 +83,7 @@ if __name__ == "__main__":
     
     if args.wizard_mode:
         CliWizard().start()
+    elif args.baselines_only:
+        baselines_to_file(db_path, read_config(args.conf_file))
     else:
-        run_flex_metrics_calculation(db_path, args)
-
-        
+        flex_metrics_calculation(db_path, read_config(args.conf_file))
