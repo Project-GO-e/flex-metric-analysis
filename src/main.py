@@ -42,9 +42,15 @@ def flex_metrics_calculation(db_path: Path, conf: Config):
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
-def fetch_baselines(db_path: Path, conf: Config):
+def baselines_to_file(db_path: Path, conf: Config):
     try:
-        FlexMetrics(conf, db_path).fetch_baselines().to_csv("baselines.csv")
+        baselines_df = FlexMetrics(conf, db_path).fetch_baselines()
+        # Reduce the heat pump baseline profiles:
+        hp_baseline = baselines_df.filter(regex="hp-")
+        baselines_df.drop(list(hp_baseline), axis=1, inplace=True)
+        baselines_df["hp"] = hp_baseline.sum(axis=1)
+        baselines_df["all"] = baselines_df.sum(axis=1)
+        baselines_df.to_csv("baselines.csv")
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
@@ -78,6 +84,6 @@ if __name__ == "__main__":
     if args.wizard_mode:
         CliWizard().start()
     elif args.baselines_only:
-        fetch_baselines(db_path, read_config(args.conf_file))
+        baselines_to_file(db_path, read_config(args.conf_file))
     else:
         flex_metrics_calculation(db_path, read_config(args.conf_file))
