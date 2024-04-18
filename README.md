@@ -27,12 +27,13 @@ Make sure to put the input data in the `data` folder. If you're just using the f
 
 ### Running
 ```
-usage: src/main.py [-h] [-f FILE] [-w]
+usage: src/main.py [-h] [-f FILE] [-b] [-w]
 
 Flex Metrics Tool
 
 options:
   -h, --help            show this help message and exit
-  -f FILE, --file FILE  configuration file name
-  -w, --wizard          run fleximetrics with a cli wizard
+  -f FILE, --file FILE  scenarion definition file name
+  -b, --baselines       get only the baselines from database
+  -w, --wizard          run fleximetrics wizard to explore the database contents
 ```
