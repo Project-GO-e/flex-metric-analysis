@@ -43,7 +43,7 @@ class FileLoader():
                 df_shifted = self.__load_file(exp_path)
                 try:
                     df_baseline: pd.DataFrame = self.__load_file(baseline)
-                    day = description.get_congestion_start().date()
+                    day = description.congestion_start.date()
                     idx = df_baseline.index.get_loc(datetime.combine(day, time()))
                     loaded_experiments[description.name] = Experiment(df_baseline.iloc[idx:idx+96], df_shifted, description)
                 except FileNotFoundError as e:

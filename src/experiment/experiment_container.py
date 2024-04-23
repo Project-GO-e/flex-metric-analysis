@@ -57,7 +57,7 @@ class ExperimentContainer():
     def get_mean_flex_per_group(self) -> Dict[str, List[float]]:
         data: Dict[str, List[float] ] = {}
         for exp in self.exp.values():
-            flex_metrics = data.setdefault(exp.exp_des.get_group(), [])
+            flex_metrics = data.setdefault(exp.exp_des.group, [])
             flex_metrics.extend(exp.get_weighted_mean_flex_metrics().to_numpy())
         return data
     
@@ -80,4 +80,4 @@ class ExperimentContainer():
     
     
     def get_groups(self) -> List[str]:
-        return list((set(map(lambda e: e.exp_des.get_group(), self.exp.values()))))
+        return list((set(map(lambda e: e.exp_des.group, self.exp.values()))))

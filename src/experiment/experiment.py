@@ -21,28 +21,28 @@ class Experiment:
 
         self.exp_des = experiment_description
         self.ptu_duration: timedelta = baseline.index[1] - baseline.index[0]
-        congestion_end = self.get_congestion_start() + (self.get_congestion_duration() - 1) * self.ptu_duration
+        congestion_end = self.exp_des.congestion_start + (self.exp_des.congestion_duration - 1) * self.ptu_duration
         self.__baseline = baseline
 
-        self.__shifted = shifted[self.get_congestion_start(): congestion_end]
-        mean_baseline = self.__baseline[self.get_congestion_start() : congestion_end].mean(axis=1)
+        self.__shifted = shifted[self.exp_des.congestion_start: congestion_end]
+        mean_baseline = self.__baseline[self.exp_des.congestion_start : congestion_end].mean(axis=1)
         self.__mean_weighted_flex_metric: pd.Series = (mean_baseline - self.__shifted.mean(axis=1)) / mean_baseline
 
 
     def get_congestion_start(self) -> datetime:
-        return self.exp_des.get_congestion_start()
+        return self.exp_des.congestion_start
 
 
     def get_congestion_duration(self) -> int:
-        return self.exp_des.get_congestion_duration()
+        return self.exp_des.congestion_duration
     
 
     def get_flexwindow_duration(self) -> int:
-        return self.exp_des.get_flexwindow_duration()
+        return self.exp_des.flexwindow_duration
 
 
     def get_group(self) -> str:
-        return self.exp_des.get_group()
+        return self.exp_des.group
     
     
     def get_weighted_mean_flex_metrics(self) -> pd.Series:

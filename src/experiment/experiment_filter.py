@@ -49,7 +49,7 @@ class ExperimentFilter():
         return self
     
     def pass_filter(self, description: ExperimentDescription) -> bool:
-        return (description.get_group() in self.groups or len(self.groups) == 0) and \
-                (description.get_flexwindow_duration() in self.flex_window_durations or len(self.flex_window_durations) == 0 ) and \
-                (description.get_congestion_start() in self.cong_starts or len(self.cong_starts) == 0 ) and \
-                (description.get_congestion_duration() in self.cong_durations or len(self.cong_durations) ==0)
+        return (description.group in self.groups or len(self.groups) == 0) and \
+                (description.flexwindow_duration in self.flex_window_durations or len(self.flex_window_durations) == 0 ) and \
+                (description.congestion_start in self.cong_starts or len(self.cong_starts) == 0 ) and \
+                (description.congestion_duration in self.cong_durations or len(self.cong_durations) ==0)
