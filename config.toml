@@ -1,7 +1,7 @@
 
 congestion-start = 10:00:00
-congestion-duration = 4
-baseline-total-W = [20000.0, 20000.0, 20000.0, 20000.0]
+congestion-duration = 8
+baseline-total-W = [20000.0, 20000.0, 20000.0, 20000.0, 20000.0, 20000.0, 20000.0, 20000.0]
 
 [ev]
 typical-day = "workday"
@@ -10,14 +10,14 @@ amount = 11
 #baseline-total-W = [11000.0, 11000.0, 11000.0, 11000.0]
 
 [pv]
-typical-day = "January_Workday"
+typical-day = "january_workday"
 peak-power-W = 3500.0
 
 
 [non-flexible-load]
 
 # Use a typical work/weekend day in month
-typical-day = "January_Workday"
+typical-day = "january_workday"
 
 [[non-flexible-load.sjv]]
 name = 'sjv2500'
@@ -28,7 +28,7 @@ name = 'sjv3500'
 amount = 12
 
 [hp]
-typical-day = "January"
+typical-day = "january"
 
 [[hp.house-type]]
 name = "2_1kap+1975-1991+family"

@@ -29,7 +29,7 @@ def write_toml_template():
     
 def parse_args() -> CliArgs:
     parser = ArgumentParser(prog="src/main.py", description="Flex Metrics Tool" )
-    parser.add_argument('-f', '--file', help="configuration file name")
+    parser.add_argument('-f', '--file', help="scenarion definition file name")
     parser.add_argument('-b', '--baselines', action='store_true', help="get only the baselines from database")
     parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics wizard to explore the database contents")
     args = parser.parse_args()
