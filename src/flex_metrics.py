@@ -79,7 +79,9 @@ class FlexMetrics():
         res = {}
         if self.conf.baseline_total_W is None:
             baseline_total = ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline
-        
+        else:
+            baseline_total = self.conf.baseline_total_W
+            
         res["baseline"] = np.array(baseline_total)
         res["flex_ev"] = ev_flex
         res["flex_hp"] = hp_flex
