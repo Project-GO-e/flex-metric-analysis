@@ -50,7 +50,7 @@ def baselines_to_file(db_path: Path, conf: Config):
         baselines_df.drop(list(hp_baseline), axis=1, inplace=True)
         baselines_df["hp"] = hp_baseline.sum(axis=1)
         baselines_df["all"] = baselines_df.sum(axis=1)
-        baselines_df.to_csv("baselines.csv")
+        baselines_df.round(1).to_csv("baselines.csv")
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
