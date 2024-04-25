@@ -44,11 +44,14 @@ class FlexMetrics():
     
     def fetch_baselines(self) -> pd.DataFrame:
         with Session(self.engine) as session:
+            #TODO: get rid of hardcode length
             baselines: pd.DataFrame = pd.DataFrame(index=range(0,96))
             dao = BaselineDao(session)
             baselines['ev'] = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4).values * self.conf.ev.amount
             for hp in self.conf.hp.house_type:
                 baselines['hp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
+            for hp in self.conf.hp.house_type:
+                baselines['hhp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
             baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
             #TODO: get rid of hardcode length
             baselines['sjv'] = 96 * [0]
