@@ -6,7 +6,7 @@ from dateutil import parser
 
 from experiment.device_type import DeviceType
 
-@dataclass(init=False, frozen=True)
+@dataclass(init=False)
 class ExperimentDescription():
     name: str
     group: str 
