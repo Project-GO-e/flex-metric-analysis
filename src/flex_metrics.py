@@ -1,5 +1,6 @@
 
 
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from functools import reduce
 from pathlib import Path
@@ -20,7 +21,8 @@ from flex_metric_config import Config
 
 class FlexAssetProfiles(NamedTuple):
     ev: List[float]
-    hp: Dict[str,List[float]]
+    hp: Dict[str, List[float]]
+    hhp: Dict[str, List[float]]
 
 
 class FlexMetrics():
@@ -36,68 +38,66 @@ class FlexMetrics():
     def fetch_flex_metrics(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
             dao = FlexDevicesDao(session)
-            ev_fm = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
+            if self.conf.ev:
+                ev_fm = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
             hp_fm : Dict[str, List[float]] = {}
-            for hp in self.conf.hp.house_type:
-                hp_fm[hp.name] = dao.get_flex_metrics(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
-        return FlexAssetProfiles(ev_fm, hp_fm)
+
+            if self.conf.hp:
+                for hp in self.conf.hp.house_type:
+                    hp_fm[hp.name] = dao.get_flex_metrics(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
+            hhp_fm : Dict[str, List[float]] = {}
+            if self.conf.hhp:
+                for hhp in self.conf.hhp.house_type:
+                    hhp_fm[hhp.name] = self.conf.congestion_duration * [1]
+        return FlexAssetProfiles(ev_fm, hp_fm, hhp_fm)
     
     def fetch_baselines(self) -> pd.DataFrame:
         with Session(self.engine) as session:
             #TODO: get rid of hardcode length
             baselines: pd.DataFrame = pd.DataFrame(index=range(0,96))
             dao = BaselineDao(session)
+            # TODO: this is wrong! The baselines are accidentially stored as DataFrame in de database therefore we can now multiply the array!
             baselines['ev'] = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4).values * self.conf.ev.amount
             for hp in self.conf.hp.house_type:
                 baselines['hp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
-            for hp in self.conf.hp.house_type:
-                baselines['hhp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
+            for hhp in self.conf.hhp.house_type:
+                baselines['hhp-' + hhp.name] = dao.get_baseline_mean(DeviceType.HHP, self.conf.hhp.typical_day, hhp.name).values * hhp.amount
             baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
             #TODO: get rid of hardcode length
             baselines['sjv'] = 96 * [0]
             for sjv in self.conf.non_flexible_load.sjv:
                 baselines['sjv'] += np.array(dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)) * sjv.amount
-        return baselines.round(1)
+        return baselines
+    
 
-    def determine_flex_power(self) -> np.array:
+    def determine_flex_power(self, reduce_to_device_type: bool) -> pd.DataFrame:
         flex_metrics = self.fetch_flex_metrics()
-        if self.conf.all_baselines_available():
-            ev_baseline = np.array(self.conf.ev.baseline_total_W)
-            hp_baselines = {hp.name:np.array(hp.baseline_total_W) for hp in self.conf.hp.house_type}
-        else:
-            cong_start_idx = int((datetime.combine(date(2020,1,1), self.conf.congestion_start) - datetime(2020,1,1)) / timedelta(minutes=15))
-            baseline_profiles = self.fetch_baselines()[cong_start_idx:cong_start_idx + self.conf.congestion_duration]
-            ev_baseline = baseline_profiles['ev'].values
-            hp_baselines: Dict[str: List[float]] = {}
-            for hp in self.conf.hp.house_type:
-                hp_baselines[hp.name] = baseline_profiles['hp-'+hp.name].values
-            pv_baseline = baseline_profiles['pv'].values
-            sjv_baseline = baseline_profiles['sjv'].values
-            
-        ev_flex = np.array(flex_metrics.ev) * ev_baseline
-        hp_flex = np.zeros(len(flex_metrics.ev))
-        hp_baseline_total = reduce(np.add, hp_baselines.values())
-        for hp in hp_baselines:
-            hp_flex += np.array(flex_metrics.hp[hp]) * hp_baselines[hp]
-        res = {}
-        if self.conf.baseline_total_W is None:
-            baseline_total = ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline
-        else:
-            baseline_total = self.conf.baseline_total_W
-            
-        res["baseline"] = np.array(baseline_total)
-        res["flex_ev"] = ev_flex
-        res["flex_hp"] = hp_flex
-        print("Baseline Power: " + str(np.array(baseline_total)))
-        if self.conf.all_baselines_available():
-            print("Flexible load: " + str(ev_flex + hp_flex))
-            print("Power after application of flex: " + str(np.array(baseline_total) - ev_flex - hp_flex))
-            res["flex_total"] = ev_flex + hp_flex
-        else:
-            print("Baseline Power: " + str(np.array(baseline_total)))
-            print("Flexible load: " + str(ev_flex + hp_flex))
-            print("Power after application of flex: " + str(np.array(baseline_total) - ev_flex - hp_flex))
-            res["flex_total"] = ev_flex + hp_flex / (ev_baseline + hp_baseline_total + pv_baseline + sjv_baseline) * np.array(baseline_total)
+        cong_start_idx = int((datetime.combine(date(2020,1,1), self.conf.congestion_start) - datetime(2020,1,1)) / timedelta(minutes=15))
+        baselines_db = self.fetch_baselines()[cong_start_idx:cong_start_idx + self.conf.congestion_duration]
+        baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+        results = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
         
-        pd.DataFrame(res).round(2).to_excel("out.xlsx")
-        return res["flex_total"]
+        if self.conf.ev:
+            baselines['ev'] = np.array(self.conf.ev.baseline_total_W) if self.conf.ev.baseline_total_W else baselines_db['ev'].values
+            results["flex_ev"] = np.array(flex_metrics.ev) * baselines['ev']
+        
+        if self.conf.hp:
+            for hp in self.conf.hp.house_type:
+                baselines[hp.name] = np.array(hp.baseline_total_W) if hp.baseline_total_W  else baselines_db['hp-' + hp.name].values
+                results["flex_hp_" + hp.name] = np.array(flex_metrics.hp[hp.name]) * baselines[hp.name]
+        
+        if self.conf.hhp:
+            for hhp in self.conf.hhp.house_type:
+                baselines[hhp.name] = np.array(hhp.baseline_total_W) if hhp.baseline_total_W else baselines_db['hhp-' + hhp.name].values
+                results["flex_hhp_" + hp.name] = np.array(flex_metrics.hhp[hhp.name]) * baselines[hhp.name]
+        
+        if reduce_to_device_type:
+            hp_baseline = results.filter(regex="flex_hp_")
+            results.drop(list(hp_baseline), axis=1, inplace=True)
+            results["flex_hp"] = hp_baseline.sum(axis=1)
+            hhp_baseline = results.filter(regex="flex_hhp_")
+            results.drop(list(hhp_baseline), axis=1, inplace=True)
+            results["flex_hhp"] = hhp_baseline.sum(axis=1)
+
+        results['baseline'] = baselines.sum(axis=1)
+        return results
