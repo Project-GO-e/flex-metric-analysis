@@ -1,7 +1,7 @@
 
 from dataclasses import dataclass
 from datetime import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -28,6 +28,13 @@ class HouseTypeConfig:
 
 @dataclass
 class HpConfig:
+    typical_day: str
+    '''Use a typical day in month'''
+    house_type: List[HouseTypeConfig]
+
+
+@dataclass
+class HhpConfig:
     typical_day: str
     '''Use a typical day in month'''
     house_type: List[HouseTypeConfig]
@@ -64,6 +71,7 @@ class Config:
     '''Duration of the congestion in amount of PTU (15min)'''
     ev: Optional[EvConfig] = None
     hp: Optional[HpConfig] = None
+    hhp: Optional[HhpConfig] = None
     pv: Optional[PvConfig] = None
     non_flexible_load: Optional[BaseloadConfig] = None
     baseline_total_W: Optional[List[float]] = None
@@ -74,9 +82,10 @@ class Config:
         for hp in self.hp.house_type:
             if hp.baseline_total_W is None:
                 baseline_available = False
-                print(f"No heatpump baseline for {hp.name}")
+        for hhp in self.hhp.house_type:
+            if hhp.baseline_total_W is None:
+                baseline_available = False
         if self.ev.baseline_total_W is None:
-            print("No EV baseline provided")
             baseline_available = False
         return baseline_available
 
@@ -85,16 +94,40 @@ class Config:
         for hp in self.hp.house_type:
             if hp.amount is None:
                 amounts_available = False
-                print(f"No heatpump amount provided for {hp.name}")
-        
+        for hhp in self.hp.house_type:
+            if hhp.amount is None:
+                amounts_available = False
         if self.ev.amount is None:
-            print("No EV amount provided")
             amounts_available = False
         return amounts_available
 
+    def validate_profile_lengths(self) -> Tuple[bool, str]:
+        all_lengths_valid = True
+        non_valid_device_baselines = []
+        if self.hp:
+            for hp in self.hp.house_type:
+                if hp.baseline_total_W and len(hp.baseline_total_W) is not self.congestion_duration:
+                    all_lengths_valid = False
+                    non_valid_device_baselines.append("HP: " + hp.name)
+
+        if self.hhp:
+            for hhp in self.hhp.house_type:
+                if hhp.baseline_total_W and len(hhp.baseline_total_W) is not self.congestion_duration:
+                    all_lengths_valid = False
+                    non_valid_device_baselines.append("HHP" + hhp.name)
+        
+        if self.ev and len(self.ev.baseline_total_W) is not self.congestion_duration:
+            all_lengths_valid = False
+            non_valid_device_baselines.append("EV")
+        
+        if not all_lengths_valid:
+            msg = "The following device types have a different profile length than the congestion duration: " + ", ".join(non_valid_device_baselines)
+        else: 
+            msg = ""
+        return (all_lengths_valid, msg)
+    
     def is_valid(self) -> bool:
-        valid = True
-        if not self.all_baselines_available() and not self.all_asset_amounts_available():
-            print("Invalid configuration. Not for all flexible assets baselines have been provided. The alternative is to provide amounts of flexible devices for all flexible device types but not all flexible devices have amounts.")
-            valid = False
-        return valid
+        profile_length_validation = self.validate_profile_lengths()
+        if not profile_length_validation[0]:
+            raise AssertionError("Validation error: " + profile_length_validation[1])
+        return profile_length_validation[0]

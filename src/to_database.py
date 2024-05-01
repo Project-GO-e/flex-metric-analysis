@@ -47,6 +47,8 @@ def delete_device_type(device_type: DeviceType):
     with Session(engine) as session:
         doa = FlexDevicesDao(session)
         doa.delete_device_type(device_type)
+        baseline_dao = BaselineDao(session)
+        baseline_dao.delete_device_type(device_type)
 
 def ev_from_file_to_db():
     areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).group, EV_BASELINES.iterdir()))
@@ -83,6 +85,7 @@ def hp_from_file_to_db():
 
 def hhp_from_file_to_db():
     for f in HHP_BASELINES.iterdir():
+        print(f)
         if f.suffix == '.csv':
             df_baseline = pd.read_csv(f, sep=';', decimal=',', index_col=0, parse_dates=True)
         else:
@@ -95,11 +98,11 @@ def hhp_from_file_to_db():
             df_month_avg: pd.DataFrame = df_month_w_tod.groupby('Time').mean()
             month = datetime(2020, month_idx, 1).strftime('%B')
             group_elements: List[str] = f.stem.removeprefix("baselines+").split('+')
-            group = f"{group_elements[0]}+{group_elements[1]}+{group_elements[2].removeprefix('status').replace(' ', '_')}"
+            group = f"{group_elements[0]}+{group_elements[1]}+{group_elements[2].removeprefix('status')}".replace(' ', '_').lower()
             with Session(engine) as session:
                 doa = BaselineDao(session)
-                doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_avg".lower(), group=group.lower(), mean_power=df_month_avg.mean(axis=1).round(2).values)
-                doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_15th".lower(), group=group.lower(), mean_power=df_month.loc[df_month.index.day == 15].mean(axis=1).values)
+                doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_avg".lower(), group=group, mean_power=df_month_avg.mean(axis=1).round(2))
+                doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_15th".lower(), group=group, mean_power=df_month.loc[df_month.index.day == 15].mean(axis=1))
         
     
 def gm_types():
@@ -131,25 +134,31 @@ def gm_types():
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
-    parser.add_argument('-d', '--drop', action='store_true', help="drop the database tables before write")
+    parser.add_argument('-d', '--drop', action='store_true', help="delete data before write. if combined with --all, all data is dropped from the database. if combined with --asset_type, only data for those assets is deleted")
     parser.add_argument('-a', '--all', action="store_true", help="write data for all asset types")
     parser.add_argument('-t', '--asset_type', choices=['ev', 'hp', 'sjv-pv', 'hhp'], nargs="+", help="select for which asset type data to write")
     parser.add_argument('-p', '--path', nargs="+", help="provide the path where the input files reside")
 
     args = parser.parse_args()
 
-    if args.drop:
-        drop_database_tables()
-
     create_database_tables()
 
     if args.all or (args.asset_type and 'ev' in args.asset_type):
+        if args.drop:
+            delete_device_type(DeviceType.EV)
         ev_from_file_to_db()
     if args.all or (args.asset_type and 'hp' in args.asset_type):
+        if args.drop:
+            delete_device_type(DeviceType.HP)
         hp_from_file_to_db()
     if args.all or (args.asset_type and 'sjv-pv' in args.asset_type):
+        if args.drop:
+            delete_device_type(DeviceType.PV)
+            delete_device_type(DeviceType.SJV)
         gm_types()
     if args.all or (args.asset_type and 'hhp' in args.asset_type):
+        if args.drop:
+            delete_device_type(DeviceType.HHP)
         hhp_from_file_to_db()
 
 

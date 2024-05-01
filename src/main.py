@@ -29,7 +29,7 @@ def write_toml_template():
     
 def parse_args() -> CliArgs:
     parser = ArgumentParser(prog="src/main.py", description="Flex Metrics Tool" )
-    parser.add_argument('-f', '--file', help="scenarion definition file name")
+    parser.add_argument('-f', '--file', help="scenario definition file name. Toml and Excel formats accepted.")
     parser.add_argument('-b', '--baselines', action='store_true', help="get only the baselines from database")
     parser.add_argument('-w', '--wizard',  action='store_true', help="run fleximetrics wizard to explore the database contents")
     args = parser.parse_args()
@@ -38,7 +38,7 @@ def parse_args() -> CliArgs:
 
 def flex_metrics_calculation(db_path: Path, conf: Config):
     try:
-        FlexMetrics(conf, db_path).determine_flex_power()
+        FlexMetrics(conf, db_path).determine_flex_power(reduce_to_device_type=True).round(1).to_csv('out.csv', sep=';')
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
