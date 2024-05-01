@@ -3,7 +3,7 @@ from datetime import datetime, time
 from pathlib import Path
 
 import pandas as pd
-from flex_metric_config import BaseloadConfig, Config, EvConfig, HouseTypeConfig, HpConfig, PvConfig
+from flex_metric_config import BaseloadConfig, Config, EvConfig, HhpConfig, HouseTypeConfig, HpConfig, PvConfig
 
 
 class ExcelConverter():
@@ -17,7 +17,6 @@ class ExcelConverter():
         assert len(assets_df.query('type=="hp"')['typical_day'].unique()) == 1, "Use the same typical day for all heat pump configurations"
         assert len(assets_df.query('type=="baseload"')['typical_day'].unique()) == 1, "Use the same typical day for all baseload configurations"
         
-
     def convert(self) -> Config:
         assets_df = pd.read_excel(self.config_file, sheet_name="assets", index_col=0)
         cong_df = pd.read_excel(self.config_file, sheet_name="congestion", index_col=0, header=None)
@@ -28,6 +27,7 @@ class ExcelConverter():
         hp_conf = None
         pv_conf = None
         sjv_conf = None
+        hhp_conf = None
         for i,r in assets_df.iterrows():
             if r['type'] == 'ev':
                 #TODO: check if baseline provided, then load and add instead of amount
@@ -37,6 +37,11 @@ class ExcelConverter():
                     hp_conf = HpConfig(typical_day=r['typical_day'], house_type=[])
                 #TODO: check if baseline provided, then load and add instead of amount
                 hp_conf.house_type.append(HouseTypeConfig(name=r['group'], amount=r['amount']))
+            elif r['type'] == 'hhp':
+                if hhp_conf is None:
+                    hhp_conf = HhpConfig(typical_day=r['typical_day'], house_type=[])
+                #TODO: check if baseline provided, then load and add instead of amount
+                hhp_conf.house_type.append(HouseTypeConfig(name=r['group'], amount=r['amount']))
             elif r['type'] == 'baseload':
                 if sjv_conf is None:
                     sjv_conf = BaseloadConfig(typical_day=r['typical_day'], sjv=[])
@@ -46,7 +51,7 @@ class ExcelConverter():
                 #TODO: check if baseline provided, then load and add instead of amount
                 pv_conf = PvConfig(typical_day=r['typical_day'], peak_power_W=r['amount'])
 
-        return Config(congestion_start=cong_start, congestion_duration=cong_dur, ev=ev_conf, hp=hp_conf, pv=pv_conf, non_flexible_load=sjv_conf)
+        return Config(congestion_start=cong_start, congestion_duration=cong_dur, ev=ev_conf, hp=hp_conf, pv=pv_conf, non_flexible_load=sjv_conf, hhp=hhp_conf)
 
 
 if __name__ == "__main__":
