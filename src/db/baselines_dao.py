@@ -30,8 +30,26 @@ class BaselineDao():
             self.session.add(Baseline(id=exp_id, device_type=device_type, typical_day=typical_day, group=group, mean_power=power))
         self.session.commit()
 
-    def get_typical_days(self, device_type: DeviceType) -> List[str]:
-        stmt = select(Baseline.typical_day).where(Baseline.device_type.is_(device_type)).distinct()
+    def get_device_types(self) -> List[DeviceType]:
+        stmt = select(Baseline.device_type).distinct()
+        return self.session.scalars(stmt).all()
+
+    def get_typical_days(self, device_type: DeviceType = None, group: str = None) -> List[str]:
+        stmt = select(Baseline.typical_day)
+        if device_type:
+            stmt = stmt.where(Baseline.device_type.is_(device_type))
+        if group:
+            stmt = stmt.where(Baseline.group == group)
+        stmt = stmt.distinct()
+        return self.session.scalars(stmt).all()
+
+    def get_groups(self, device_type: DeviceType = None, typical_day: str = None) -> List[int]:
+        stmt = select(Baseline.group)
+        if device_type:
+            stmt = stmt.where(Baseline.device_type.is_(device_type))
+        if typical_day:
+            stmt = stmt.where(Baseline.typical_day == typical_day)
+        stmt = stmt.distinct()
         return self.session.scalars(stmt).all()
 
     def get_baseline_mean(self, device_type: DeviceType, typical_day: str, group: str) -> List[float]:

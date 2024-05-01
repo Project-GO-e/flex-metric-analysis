@@ -90,7 +90,7 @@ if __name__ == "__main__":
     args = parse_args()
     
     if args.wizard_mode:
-        CliWizard().start()
+        CliWizard(db_path).start()
     elif args.baselines_only:
         baselines_to_file(db_path, read_config(args.conf_file))
     else:

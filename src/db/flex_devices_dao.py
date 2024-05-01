@@ -30,7 +30,6 @@ class FlexDevicesDao():
     def __init__(self, session: Session) -> None:
         self.session = session
 
-
     def save_container(self, container: ExperimentContainer):
         for e in container.exp.values():
             exp = self.session.get(FlexMetric, e.exp_des.name)
@@ -39,7 +38,6 @@ class FlexDevicesDao():
             else: 
                 self.session.add(FlexDevicesDao.to_db_object(e))
         self.session.commit()
-    
 
     def save(self, exp: Experiment):
         exp_db = self.session.get(FlexMetric, exp.exp_des.name)
@@ -49,26 +47,35 @@ class FlexDevicesDao():
             self.session.add(FlexDevicesDao.to_db_object(exp))
         self.session.commit()
 
-
     def get_typical_days(self, device_type: DeviceType) -> List[str]:
         stmt = select(FlexMetric.typical_day).where(FlexMetric.device_type.is_(device_type)).distinct()
         return self.session.scalars(stmt).all()
     
-    
-    def get_congestion_start(self) -> List[time]:
-        stmt = select(FlexMetric.cong_start).distinct()
+    def get_congestion_start(self, device_type: DeviceType = None, typical_day: str = None, group: str = None) -> List[time]:
+        stmt = select(FlexMetric.cong_start)
+        if device_type:
+            stmt = stmt.where(FlexMetric.device_type == device_type)
+        if typical_day:
+            stmt = stmt.where(FlexMetric.typical_day == typical_day)
+        if group:
+            stmt = stmt.where(FlexMetric.group == group)
+        stmt = stmt.distinct()
         return self.session.scalars(stmt).all()
-    
 
-    def get_congestion_duration(self, cong_start: time) -> List[int]:
-        stmt = select(FlexMetric.cong_duration).where(FlexMetric.cong_start.is_(cong_start)).distinct()
+    def get_congestion_duration(self, cong_start: time, device_type: DeviceType = None, typical_day: str = None, group: str = None) -> List[int]:
+        stmt = select(FlexMetric.cong_duration).where(FlexMetric.cong_start.is_(cong_start))
+        if device_type:
+            stmt = stmt.where(FlexMetric.device_type == device_type)
+        if typical_day:
+            stmt = stmt.where(FlexMetric.typical_day == typical_day)
+        if group:
+            stmt = stmt.where(FlexMetric.group == group)
+        stmt = stmt.distinct()
         return self.session.scalars(stmt).all()
     
-    
-    def get_groups_for_device_type(self: time, device_type: DeviceType) -> List[int]:
+    def get_groups_for_device_type(self, device_type: DeviceType) -> List[int]:
         stmt = select(FlexMetric.group).where(FlexMetric.device_type.is_(device_type)).distinct()
         return self.session.scalars(stmt).all()
-    
 
     def get_flex_metrics(self, device_type: DeviceType, cong_start: time, cong_dur: int, group: str, typical_day: str) -> List[float]:
         stmt = select(FlexMetric.flex_metric)\
@@ -82,7 +89,6 @@ class FlexDevicesDao():
             return pickle.loads(res)
         else:
             raise DataNotFoundException(f"No flex metrics found for {str(device_type)}, congestion start '{cong_start}', congestion duration '{cong_dur}', group '{group}', typical day '{typical_day}'.")
-
 
     def delete_device_type(self, device_type: DeviceType):
         stmt = delete(FlexMetric).where(FlexMetric.device_type.is_(device_type))

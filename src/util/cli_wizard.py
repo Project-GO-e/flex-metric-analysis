@@ -1,21 +1,26 @@
 
 
-from datetime import time
+from pathlib import Path
+from typing import Any
 
-import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from db.baselines_dao import BaselineDao
 from db.flex_devices_dao import FlexDevicesDao
 from experiment.experiment_description import DeviceType
-from flex_metric_config import EvConfig
 
-DB_FILE="flex-metrics.db"
+
 
 class CliWizard():
+    '''Utily class to explore in an interactive way the contents of the database'''
 
-    engine = create_engine(f"sqlite:///{DB_FILE}", echo=False)
-
+    def __init__(self, db_file: Path) -> None:
+        if not db_file.exists():
+            print("Database file is missing. Cannot run the flex metrics tool.\nExiting...")
+            exit(1)
+        else:
+            self.engine = create_engine(f"sqlite:///{db_file}", echo=False)
 
     def __select_yes_no(question) -> bool:
         yn = input(f"\n{question} (Y/n) ")
@@ -24,8 +29,7 @@ class CliWizard():
         else:
             return CliWizard.__select_yes_no("Please answer only with Yes (Y) or no (n). ")
 
-
-    def __select_option(question, options):
+    def __select_option(question, options) -> Any:
         if len(options) == 0:
             raise Exception("No options for question '" + question + "'")
         print(f"\n{question}")
@@ -33,7 +37,6 @@ class CliWizard():
             print(f"\t{i:2d}. {d}")
         idx = int(input(f"\nProvide [{1}..{len(options)}]: "))
         return options[idx - 1]
-
 
     def __read_profile(question, profile_length=None):
         invalid_input = True
@@ -46,55 +49,26 @@ class CliWizard():
                 invalid_input = False
         return list(map(lambda x: float(x.strip()), profile_list))
 
+    def start(self) -> None:
+        with Session(self.engine) as session:
+            doa = BaselineDao(session)
+            device_types = doa.get_device_types()
+            device_type = CliWizard.__select_option("The following device are known. For which device do you want to explore the data: ", device_types)
+            typical_day = CliWizard.__select_option(f"Typical days for {device_type}: ", doa.get_typical_days(device_type=device_type))
+            group = CliWizard.__select_option(f"Groups for {device_type}: ", doa.get_groups(device_type=device_type, typical_day=typical_day))
+            fm_doa = FlexDevicesDao(session)
+            cong_starts = fm_doa.get_congestion_start(device_type=device_type, typical_day=typical_day, group=group)
+            if len(cong_starts) > 0 and CliWizard.__select_yes_no(f"The database contains flexmetrics for {device_type}. Would you like to explore the congestion start and durations? "):
+                fm_doa = FlexDevicesDao(session)
+                cong_starts = fm_doa.get_congestion_start(device_type=device_type, typical_day=typical_day, group=group)
+                cong_starts.sort()
+                cong_start = CliWizard.__select_option(f"Choose congestion start time for '{device_type}' and the selection you made above:", cong_starts)
+                cong_durations = fm_doa.get_congestion_duration(cong_start=cong_start, device_type=device_type, typical_day=typical_day, group=group)
+                cong_durations.sort()
+                cong_dur = CliWizard.__select_option(f"Choose congestion start duration for '{device_type}' and the selection you made above:", cong_durations)
+            else:
+                print(f"No flex metrics available for device type {device_type}.")
 
-    def start(self):
-        with Session(CliWizard.engine) as session:
-            doa = FlexDevicesDao(session)
-            ev_typical_days = doa.get_typical_days(DeviceType.EV)
-            hp_typical_days = doa.get_typical_days(DeviceType.HP)
-            ev_groups = doa.get_groups_for_device_type(DeviceType.EV)
-            hp_groups = doa.get_groups_for_device_type(DeviceType.HP)
-            cong_start_times = doa.get_congestion_start()
-            cong_start_times.sort()
-            ev_groups.sort()
-            hp_groups.sort()
-            cong_start: time = CliWizard.__select_option("When does the congestion start?", cong_start_times)
-            cong_durations = doa.get_congestion_duration(cong_start)
-            cong_durations.sort()
-            cong_dur = CliWizard.__select_option("How long the congestion take?", cong_durations)
-            print("[TODO] Offer to provide more house types")
-
-        print("Scenario input:")
-        ev_group = CliWizard.__select_option("Which PC4 area for EV charging session to use?", ev_groups)
-        ev_typical_day = CliWizard.__select_option("Choose EV typical day: ", ev_typical_days)
-        hp_typical_day = CliWizard.__select_option("Choose HP typical day: ", hp_typical_days)
-        hp_group = CliWizard.__select_option("Which house types for heat pumps to use?", hp_groups)
-        average_load_per_type_available = CliWizard.__select_yes_no("Are the average load values for all flexible asset types available from the load flow calculations?")
-
-        if average_load_per_type_available:
-            ev_baseline = CliWizard.__read_profile("EV total load profile.", cong_dur)
-            hp_baseline = CliWizard.__read_profile("Heat pump total load profile.", cong_dur)
-            with Session(CliWizard.engine) as session:
-                doa = FlexDevicesDao(session)
-                ev_flex_metrics = doa.get_flex_metrics(device_type=DeviceType.EV, cong_start=cong_start, cong_dur=cong_dur, group=ev_group, typical_day=ev_typical_day)
-                hp_flex_metrics = doa.get_flex_metrics(device_type=DeviceType.HP, cong_start=cong_start, cong_dur=cong_dur, group=hp_group, typical_day=hp_typical_day)
-            
-            ev_flex = np.array(ev_flex_metrics) * np.array(ev_baseline)
-            print("EV flex" + str(ev_flex))
-            hp_flex = np.array(hp_flex_metrics) * np.array(hp_baseline)
-            print("HP flex" + str(hp_flex))
-            print("Flex Power: " + str(ev_flex + hp_flex))
-            ev_conf = EvConfig(ev_typical_day, ev_group, ev_baseline)
-            hp_conf = EvConfig(hp_typical_day, hp_group, hp_baseline)
-            total_load = None
-        else:
-            nr_ev = input(f"How many electric vehicles: ")
-            nr_hp = input(f"How many heat pumps: ")
-            total_load = CliWizard.__read_profile("Total baseline profile.", cong_dur)
-            ev_conf = EvConfig(ev_typical_day, ev_group, nr_ev)
-            hp_conf = EvConfig(hp_typical_day, hp_group, nr_hp)
-
-
-        # TODO: finish creating config from input
-        # Config(cong_start, cong_dur, ev_conf, hp_conf, pv_conf, sjv_conf, total_load)
-        print("Thanks")
+        print("\nThanks for using the wizard. Here follows a line that you can put in your excel config for the asset you selected.")
+        excel_device_type = 'baseload' if device_type == DeviceType.SJV else str(device_type).lower()
+        print(f"\n{excel_device_type},{typical_day},{group}\n")
