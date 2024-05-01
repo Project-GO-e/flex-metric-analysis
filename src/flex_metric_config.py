@@ -116,7 +116,7 @@ class Config:
                     all_lengths_valid = False
                     non_valid_device_baselines.append("HHP" + hhp.name)
         
-        if self.ev and len(self.ev.baseline_total_W) is not self.congestion_duration:
+        if self.ev and self.ev.baseline_total_W and len(self.ev.baseline_total_W) is not self.congestion_duration:
             all_lengths_valid = False
             non_valid_device_baselines.append("EV")
         
