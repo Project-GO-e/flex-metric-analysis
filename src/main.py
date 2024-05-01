@@ -45,15 +45,17 @@ def flex_metrics_calculation(db_path: Path, conf: Config):
 def baselines_to_file(db_path: Path, conf: Config):
     try:
         baselines_df = FlexMetrics(conf, db_path).fetch_baselines()
-        # Reduce the heat pump baseline profiles:
+        # Reduce the (hybrid) heat pump baseline profiles:
         hp_baseline = baselines_df.filter(regex="^hp-")
-        baselines_df.drop(list(hp_baseline), axis=1, inplace=True)
-        baselines_df["hp"] = hp_baseline.sum(axis=1)
+        if len(hp_baseline.columns) > 0:
+            baselines_df.drop(list(hp_baseline), axis=1, inplace=True)
+            baselines_df["hp"] = hp_baseline.sum(axis=1)
         hhp_baseline = baselines_df.filter(regex="^hhp-")
-        baselines_df.drop(list(hhp_baseline), axis=1, inplace=True)
-        baselines_df["hhp"] = hhp_baseline.sum(axis=1)
+        if len(hhp_baseline.columns) > 0:
+            baselines_df.drop(list(hhp_baseline), axis=1, inplace=True)
+            baselines_df["hhp"] = hhp_baseline.sum(axis=1)
         baselines_df["all"] = baselines_df.sum(axis=1)
-        baselines_df.round(1).to_csv("baselines.csv", sep=';')
+        baselines_df.round(1).to_csv(f"baselines.csv", sep=';')
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
@@ -67,12 +69,15 @@ def read_config(config_file: Path) -> Config:
         except FileNotFoundError:
             print(f"Configuration file '{config_file}' not found." + "\nExiting...")
             exit(1)
-    if Path(args.conf_file).suffix == ".xlsx":
+    elif Path(args.conf_file).suffix == ".xlsx":
         try:
             conf = ExcelConverter(config_file=config_file).convert()
         except FileNotFoundError:
             print(f"Configuration file '{config_file}' not found." + "\nExiting...")
             exit(1)
+    else:
+        print("Unknown input file type. Please use a file with the toml or xlsx extension. Exiting...")
+        exit(1)
     if not conf.is_valid():
         print("Configuration invalid. Exiting...")
         exit(1)
