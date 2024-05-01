@@ -46,11 +46,14 @@ def baselines_to_file(db_path: Path, conf: Config):
     try:
         baselines_df = FlexMetrics(conf, db_path).fetch_baselines()
         # Reduce the heat pump baseline profiles:
-        hp_baseline = baselines_df.filter(regex="hp-")
+        hp_baseline = baselines_df.filter(regex="^hp-")
         baselines_df.drop(list(hp_baseline), axis=1, inplace=True)
         baselines_df["hp"] = hp_baseline.sum(axis=1)
+        hhp_baseline = baselines_df.filter(regex="^hhp-")
+        baselines_df.drop(list(hhp_baseline), axis=1, inplace=True)
+        baselines_df["hhp"] = hhp_baseline.sum(axis=1)
         baselines_df["all"] = baselines_df.sum(axis=1)
-        baselines_df.round(1).to_csv("baselines.csv")
+        baselines_df.round(1).to_csv("baselines.csv", sep=';')
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 

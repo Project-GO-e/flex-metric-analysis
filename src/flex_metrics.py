@@ -1,8 +1,6 @@
 
 
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from functools import reduce
 from pathlib import Path
 from sys import exit
 from typing import Dict, List, NamedTuple
@@ -41,7 +39,6 @@ class FlexMetrics():
             if self.conf.ev:
                 ev_fm = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
             hp_fm : Dict[str, List[float]] = {}
-
             if self.conf.hp:
                 for hp in self.conf.hp.house_type:
                     hp_fm[hp.name] = dao.get_flex_metrics(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
@@ -56,17 +53,22 @@ class FlexMetrics():
             #TODO: get rid of hardcode length
             baselines: pd.DataFrame = pd.DataFrame(index=range(0,96))
             dao = BaselineDao(session)
-            # TODO: this is wrong! The baselines are accidentially stored as DataFrame in de database therefore we can now multiply the array!
-            baselines['ev'] = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4).values * self.conf.ev.amount
-            for hp in self.conf.hp.house_type:
-                baselines['hp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
-            for hhp in self.conf.hhp.house_type:
-                baselines['hhp-' + hhp.name] = dao.get_baseline_mean(DeviceType.HHP, self.conf.hhp.typical_day, hhp.name).values * hhp.amount
-            baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
-            #TODO: get rid of hardcode length
-            baselines['sjv'] = 96 * [0]
-            for sjv in self.conf.non_flexible_load.sjv:
-                baselines['sjv'] += np.array(dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)) * sjv.amount
+            if self.conf.ev:
+                # TODO: this is wrong! The baselines are accidentially stored as DataFrame in de database therefore we can now multiply the array!
+                baselines['ev'] = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4).values * self.conf.ev.amount
+            if self.conf.hp:
+                for hp in self.conf.hp.house_type:
+                    baselines['hp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
+            if self.conf.hhp:
+                for hhp in self.conf.hhp.house_type:
+                    baselines['hhp-' + hhp.name] = dao.get_baseline_mean(DeviceType.HHP, self.conf.hhp.typical_day, hhp.name).values * hhp.amount
+            if self.conf.pv:
+                baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
+            if self.conf.non_flexible_load:
+                #TODO: get rid of hardcode length
+                baselines['sjv'] = 96 * [0]
+                for sjv in self.conf.non_flexible_load.sjv:
+                    baselines['sjv'] += np.array(dao.get_baseline_mean(DeviceType.SJV, self.conf.non_flexible_load.typical_day, sjv.name)) * sjv.amount
         return baselines
     
 
