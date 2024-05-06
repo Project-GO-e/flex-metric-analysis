@@ -36,6 +36,9 @@ class FlexMetrics():
     def fetch_flex_metrics(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
             dao = FlexDevicesDao(session)
+            ev_fm = None
+            hp_fm = None
+            hhp_fm = None
             if self.conf.ev:
                 ev_fm = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
             hp_fm : Dict[str, List[float]] = {}
@@ -83,6 +86,12 @@ class FlexMetrics():
             baselines['ev'] = np.array(self.conf.ev.baseline_total_W) if self.conf.ev.baseline_total_W else baselines_db['ev'].values
             results["flex_ev"] = np.array(flex_metrics.ev) * baselines['ev']
         
+        if self.conf.pv:
+            baselines['pv'] = baselines_db['pv'].values
+
+        if self.conf.non_flexible_load:
+            baselines['sjv'] = baselines_db['sjv'].values
+
         if self.conf.hp:
             for hp in self.conf.hp.house_type:
                 baselines[hp.name] = np.array(hp.baseline_total_W) if hp.baseline_total_W  else baselines_db['hp-' + hp.name].values
@@ -93,11 +102,13 @@ class FlexMetrics():
                 baselines[hhp.name] = np.array(hhp.baseline_total_W) if hhp.baseline_total_W else baselines_db['hhp-' + hhp.name].values
                 results["flex_hhp_" + hp.name] = np.array(flex_metrics.hhp[hhp.name]) * baselines[hhp.name]
         
-        if reduce_to_device_type:
-            hp_baseline = results.filter(regex="flex_hp_")
+        hp_baseline = results.filter(regex="flex_hp_")
+        if reduce_to_device_type and len(hp_baseline.columns) > 0:
             results.drop(list(hp_baseline), axis=1, inplace=True)
             results["flex_hp"] = hp_baseline.sum(axis=1)
-            hhp_baseline = results.filter(regex="flex_hhp_")
+
+        hhp_baseline = results.filter(regex="flex_hhp_")
+        if reduce_to_device_type and len(hhp_baseline.columns) > 0:
             results.drop(list(hhp_baseline), axis=1, inplace=True)
             results["flex_hhp"] = hhp_baseline.sum(axis=1)
 
