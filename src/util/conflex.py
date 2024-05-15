@@ -1,3 +1,5 @@
+from calendar import month_name
+from collections import namedtuple
 from typing import List
 
 import numpy as np
@@ -7,7 +9,9 @@ from scipy import stats
 CONFIG_DIR = 'data/SJV-PV-GM-input/'
 GM_TYPE_FILE = 'GM-types GO-e.xlsx'
 BUURT_FILE = 'buurt.xlsx'
+SUNRISE_SUNSET_FILE = 'sunset-sunrise.csv'
 
+GmContext = namedtuple("Context", "day_type month_idx, gm_type")
 
 def readGM(filename): 
     return pd.read_excel(filename, header=0)
@@ -43,11 +47,12 @@ def get_daily_sjv_expectation_values(sjv_type, df, day_type, month) -> List[floa
     return expectation_values
 
 
-def get_daily_pv_expectation_values(pv_type, df, day_type, month) -> List[float]:
-    expectation_values = []
-    for i in range(1, 97):
-        expectation_values.append(get_single_PV_Expectaction_Value(pv_type, df, (day_type, month, i),1))
-    return expectation_values
+def get_daily_pv_expectation_values(pv_type, df, sunrise_set, day_type, month) -> List[float]:
+    return list(map(lambda x: get_single_PV_Expectaction_Value(pv_type, df, sunrise_set, GmContext(day_type, month, x), 1), range(1, 97)))
+    # expectation_values = []
+    # for i in range(1, 97):
+    #     expectation_values.append(get_single_PV_Expectaction_Value(pv_type, df, (day_type, month, i),1))
+    # return expectation_values
 
 
 def get_single_SJV_Expectation_value(SJV_Type, df, context):
@@ -149,7 +154,7 @@ def get_single_SJV_Expectation_value(SJV_Type, df, context):
 
     return expection_value
 
-def get_single_PV_Expectaction_Value(GMname, df, context, installed_power_):
+def get_single_PV_Expectaction_Value(GMname, df, sunrise_set, context, installed_power_):
     dagtype = context[0]
     maand = context[1]
     kwartier = context[2]
@@ -185,7 +190,8 @@ def get_single_PV_Expectaction_Value(GMname, df, context, installed_power_):
     distnorm = stats.norm(loc = gm_average , scale=gm_std)
     prob_day = GMparms[dagtype+"[1,"+str(kwartier)+"]"].values[0]
     prob_month = GMparms["Month[1,"+str(maand)+"]"].values[0]
-    probactive = prob_day*prob_month
+    prob_time = context[2] >= sunrise_set.loc[month_name[context[1]].lower()]['sunrise'] and context[2] <= sunrise_set.loc[month_name[context[1]].lower()]['sunset']
+    probactive = prob_day*prob_month * prob_time
 
     if probactive>1 : probactive = 1
 
@@ -211,6 +217,8 @@ def main() :
     buurtdf = readGM(CONFIG_DIR + BUURT_FILE)
     GMdf = readGM(CONFIG_DIR + GM_TYPE_FILE)
 
+    sunset_rise = pd.read_csv(CONFIG_DIR + SUNRISE_SUNSET_FILE, delimiter=';', index_col=0)
+
     # Daytype, month, PTU of the day
     context = ("Workday", 1, 48)
 
@@ -220,7 +228,7 @@ def main() :
             expectation_value = get_single_SJV_Expectation_value(node.loc['GMname'], GMdf, context)
             print(node.loc['GMtype'] + "/" + node.loc['GMname'] + " - Expectation value: " + str(expectation_value))
         elif (node.loc['GMtype'] == 'PV'):
-            expectation_value = get_single_PV_Expectaction_Value(node.loc['GMname'], GMdf, context, node.loc['installed_power'])
+            expectation_value = get_single_PV_Expectaction_Value(node.loc['GMname'], GMdf, sunset_rise, context, node.loc['installed_power'])
             print(node.loc['GMtype'] + "/" + node.loc['GMname'] + " - Expectation value: " + str(expectation_value))
 
 
