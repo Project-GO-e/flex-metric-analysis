@@ -36,16 +36,15 @@ class FlexMetrics():
     def fetch_flex_metrics(self) -> FlexAssetProfiles:
         with Session(self.engine) as session:
             dao = FlexDevicesDao(session)
-            ev_fm = None
-            hp_fm = None
-            hhp_fm = None
+            ev_fm: Dict[str, List[float]] = {}
+            hp_fm: Dict[str, List[float]] = {}
+            hhp_fm: Dict[str, List[float]] = {}
             if self.conf.ev:
-                ev_fm = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, self.conf.ev.pc4, self.conf.ev.typical_day)
-            hp_fm : Dict[str, List[float]] = {}
+                for e in self.conf.ev:
+                    ev_fm[e.pc4] = dao.get_flex_metrics(DeviceType.EV, self.conf.congestion_start, self.conf.congestion_duration, e.pc4, e.typical_day)
             if self.conf.hp:
                 for hp in self.conf.hp.house_type:
                     hp_fm[hp.name] = dao.get_flex_metrics(DeviceType.HP, self.conf.congestion_start, self.conf.congestion_duration, hp.name, self.conf.hp.typical_day)
-            hhp_fm : Dict[str, List[float]] = {}
             if self.conf.hhp:
                 for hhp in self.conf.hhp.house_type:
                     hhp_fm[hhp.name] = self.conf.congestion_duration * [1]
@@ -57,8 +56,9 @@ class FlexMetrics():
             baselines: pd.DataFrame = pd.DataFrame(index=range(0,96))
             dao = BaselineDao(session)
             if self.conf.ev:
-                # TODO: this is wrong! The baselines are accidentially stored as DataFrame in de database therefore we can now multiply the array!
-                baselines['ev'] = dao.get_baseline_mean(DeviceType.EV, self.conf.ev.typical_day, self.conf.ev.pc4).values * self.conf.ev.amount
+                for e in self.conf.ev:
+                    # TODO: this is wrong! The baselines are accidentially stored as DataFrame in de database therefore we can now multiply the array!
+                    baselines[f'ev-{e.pc4}'] = dao.get_baseline_mean(DeviceType.EV, e.typical_day, e.pc4).values * e.amount
             if self.conf.hp:
                 for hp in self.conf.hp.house_type:
                     baselines['hp-' + hp.name] = dao.get_baseline_mean(DeviceType.HP, self.conf.hp.typical_day, hp.name).values * hp.amount
@@ -83,8 +83,9 @@ class FlexMetrics():
         results = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
         
         if self.conf.ev:
-            baselines['ev'] = np.array(self.conf.ev.baseline_total_W) if self.conf.ev.baseline_total_W else baselines_db['ev'].values
-            results["flex_ev"] = np.array(flex_metrics.ev) * baselines['ev']
+            for e in self.conf.ev:
+                baselines[f'ev-{e.pc4}'] = np.array(e.baseline_total_W) if e.baseline_total_W else baselines_db[f'ev-{e.pc4}'].values
+                results[f"flex_ev_{e.pc4}"] = np.array(flex_metrics.ev[e.pc4]) * baselines[f'ev-{e.pc4}']
         
         if self.conf.pv:
             baselines['pv'] = baselines_db['pv'].values
@@ -102,6 +103,11 @@ class FlexMetrics():
                 baselines[hhp.name] = np.array(hhp.baseline_total_W) if hhp.baseline_total_W else baselines_db['hhp-' + hhp.name].values
                 results["flex_hhp_" + hp.name] = np.array(flex_metrics.hhp[hhp.name]) * baselines[hhp.name]
         
+        ev_baseline = results.filter(regex="flex_ev_")
+        if reduce_to_device_type and len(ev_baseline.columns) > 0:
+            results.drop(list(ev_baseline), axis=1, inplace=True)
+            results["flex_ev"] = ev_baseline.sum(axis=1)
+
         hp_baseline = results.filter(regex="flex_hp_")
         if reduce_to_device_type and len(hp_baseline.columns) > 0:
             results.drop(list(hp_baseline), axis=1, inplace=True)
