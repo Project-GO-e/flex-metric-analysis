@@ -1,7 +1,10 @@
 from argparse import ArgumentParser
+from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
-from typing import List
+
+import re
+from typing import List, NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -14,8 +17,9 @@ from db.models import Baseline, FlexMetric
 from experiment.experiment_container import ExperimentContainer
 from experiment.experiment_description import DeviceType, ExperimentDescription
 from experiment.experiment_filter import ExperimentFilter
+
 from experiment.experiment_loader import DataSource, ExperimentLoader
-from util.conflex import (get_daily_pv_expectation_values,
+from util.conflex import (GmContext, get_daily_pv_expectation_values,
                           get_daily_sjv_expectation_values, readGM)
 
 BASE_PATH=Path('data')
@@ -106,37 +110,39 @@ def hhp_from_file_to_db():
     
 def gm_types():
     gm_df = readGM(SJV_PV_GM_DIR / 'GM-types GO-e.xlsx')
-    
+    sunset_rise = pd.read_csv(SJV_PV_GM_DIR / 'sunset-sunrise.csv', delimiter=';', index_col=0)
+
     gm_types = ["sjv500", "sjv1000", "sjv1500", "sjv2000", "sjv2500", "sjv3000", "sjv3500", "sjv4000", "sjv4500", "sjv5000", "sjv6000", "sjv7000", "sjv8000", "sjv9000", "sjv10000", "sjv15000", "PV"]
     day_types = ["Workday", "Weekend"]
 
-    for day_type in day_types:
-        for month_idx in range(1, 13):
-            for t in gm_types:
-                group: str
-                month = datetime(2020, month_idx, 1).strftime('%B')
-                if t.startswith('sjv'):
-                    # Convert expectation values from kW to W
-                    expectation_value = np.array(get_daily_sjv_expectation_values(t, gm_df, day_type, month_idx)) * 1000
-                    group = t
-                    device_type = DeviceType.SJV
-                elif t.startswith('PV'):
-                    # It seems that the profiles are normalized to 1, so no need to scale
-                    expectation_value = get_daily_pv_expectation_values(t, gm_df, day_type, month_idx)
-                    group = 'pv'
-                    device_type = DeviceType.PV
-                print(f"{t} - {month} - {day_type}")
+    gm_context = [GmContext(day_type, month_idx, t) for day_type in day_types for month_idx in range(1, 13) for t in gm_types]
+        
+    for gmc in gm_context:
+        group: str
+        month = datetime(2020, gmc.month_idx, 1).strftime('%B')
+        if gmc.gm_type.startswith('sjv'):
+            # Convert expectation values from kW to W
+            expectation_value = np.array(get_daily_sjv_expectation_values(gmc.gm_type, gm_df, gmc.day_type, gmc.month_idx)) * 1000
+            group = gmc.gm_type
+            device_type = DeviceType.SJV
+            typical_day=f"{month}_{gmc.day_type}".lower()
+        if gmc.gm_type.startswith('PV'):
+            # It seems that the profiles are normalized to 1, so no need to scale
+            expectation_value = get_daily_pv_expectation_values(gmc.gm_type, gm_df, sunset_rise, gmc.day_type, gmc.month_idx)
+            group = 'pv'
+            device_type = DeviceType.PV
+            typical_day=f"{month}".lower()
+        print(f"{gmc.gm_type} - {month} - {gmc.day_type}")
 
-                with Session(engine) as session:
-                    doa = BaselineDao(session)
-                    doa.save(device_type=device_type, typical_day=f"{month}_{day_type}".lower(), group=group.lower(), mean_power=expectation_value)
+        with Session(engine) as session:
+            doa = BaselineDao(session)
+            doa.save(device_type=device_type, typical_day=typical_day, group=group.lower(), mean_power=expectation_value)
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
     parser.add_argument('-d', '--drop', action='store_true', help="delete data before write. if combined with --all, all data is dropped from the database. if combined with --asset_type, only data for those assets is deleted")
     parser.add_argument('-a', '--all', action="store_true", help="write data for all asset types")
-    parser.add_argument('-t', '--asset_type', choices=['ev', 'ev-elaad', 'hp', 'sjv-pv', 'hhp'], nargs="+", help="select for which asset type data to write")
-    parser.add_argument('-p', '--path', nargs="+", help="provide the path where the input files reside")
+    parser.add_argument('-t', '--asset_type', choices=['ev', 'hp', 'sjv-pv', 'hhp'], nargs="+", help="select for which asset type data to write")
 
     args = parser.parse_args()
 
