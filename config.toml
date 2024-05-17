@@ -1,16 +1,24 @@
 
-congestion-start = 10:00:00
+congestion-start = 17:00:00
 congestion-duration = 8
 baseline-total-W = [20000.0, 20000.0, 20000.0, 20000.0, 20000.0, 20000.0, 20000.0, 20000.0]
 
-[ev]
+[[ev]]
 typical-day = "workday"
 pc4 = "9722"
 amount = 11
 #baseline-total-W = [11000.0, 11000.0, 11000.0, 11000.0]
 
+
+[[ev]]
+typical-day = "workday"
+pc4 = "public-med-2030"
+amount = 11
+#baseline-total-W = [11000.0, 11000.0, 11000.0, 11000.0]
+
+
 [pv]
-typical-day = "january_workday"
+typical-day = "january"
 peak-power-W = 3500.0
 
 
