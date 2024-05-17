@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
-import re
 from typing import List
 
 import numpy as np
@@ -15,14 +14,14 @@ from db.models import Baseline, FlexMetric
 from experiment.experiment_container import ExperimentContainer
 from experiment.experiment_description import DeviceType, ExperimentDescription
 from experiment.experiment_filter import ExperimentFilter
-from experiment.experiment_loader import FileLoader
+from experiment.experiment_loader import DataSource, ExperimentLoader
 from util.conflex import (get_daily_pv_expectation_values,
                           get_daily_sjv_expectation_values, readGM)
 
 BASE_PATH=Path('data')
 
-EV_BASELINES=BASE_PATH / 'ev/baselines/'
-EV_SHIFTED=BASE_PATH / 'ev/shifted/'
+EV_BASELINES=BASE_PATH / 'ev-elaad/ev/baselines/'
+EV_SHIFTED=BASE_PATH / 'ev-elaad/ev/shifted/'
 
 HP_BASELINES=BASE_PATH / 'hp/baselines/'
 HP_SHIFTED=BASE_PATH / 'hp/shifted-12/'
@@ -50,13 +49,13 @@ def delete_device_type(device_type: DeviceType):
         baseline_dao = BaselineDao(session)
         baseline_dao.delete_device_type(device_type)
 
-def ev_from_file_to_db():
-    areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).group, EV_BASELINES.iterdir()))
-    print(f"Writing EV flex metrics to database. Amount of PC4 areas: {len(areas)}")
+def ev_from_file_to_db(data_source: DataSource):
+    areas = set(map(lambda e: ExperimentDescription(e.stem, DeviceType.EV).group, EV_SHIFTED.iterdir()))
+    print(f"Writing EV flex metrics to database. Amount of groups: {len(areas)}")
 
     for i, area in enumerate(areas):
         load_filter = ExperimentFilter().with_group(area)
-        all_experiments: ExperimentContainer = FileLoader(baselines_dir=EV_BASELINES, shifted_dir=EV_SHIFTED).load_experiments(load_filter)
+        all_experiments: ExperimentContainer = ExperimentLoader(EV_BASELINES, EV_SHIFTED, data_source).load_experiments(load_filter)
 
         with Session(engine) as session:
             doa = FlexDevicesDao(session)
@@ -64,7 +63,7 @@ def ev_from_file_to_db():
             baseline_dao = BaselineDao(session)
             for e in all_experiments.exp.values():
                 baseline_dao.save_experiment(e)
-        print(f"Written {i + 1} / {len(areas)} pc4 areas to database.")
+        print(f"Written {i + 1} / {len(areas)} groups to database.")
 
 def hp_from_file_to_db():
     descriptions = list(map(lambda e: ExperimentDescription(e.stem, DeviceType.HP), HP_SHIFTED.iterdir()))
@@ -74,7 +73,7 @@ def hp_from_file_to_db():
     for i, hh_type in enumerate(hh_types):
         load_filter = ExperimentFilter().with_group(hh_type)
         
-        hp_experiments = FileLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments(load_filter)
+        hp_experiments = ExperimentLoader(baselines_dir=HP_BASELINES, shifted_dir=HP_SHIFTED).load_experiments(load_filter)
         with Session(engine) as session:
             doa = FlexDevicesDao(session)
             baseline_dao = BaselineDao(session)
@@ -136,7 +135,7 @@ def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
     parser.add_argument('-d', '--drop', action='store_true', help="delete data before write. if combined with --all, all data is dropped from the database. if combined with --asset_type, only data for those assets is deleted")
     parser.add_argument('-a', '--all', action="store_true", help="write data for all asset types")
-    parser.add_argument('-t', '--asset_type', choices=['ev', 'hp', 'sjv-pv', 'hhp'], nargs="+", help="select for which asset type data to write")
+    parser.add_argument('-t', '--asset_type', choices=['ev', 'ev-elaad', 'hp', 'sjv-pv', 'hhp'], nargs="+", help="select for which asset type data to write")
     parser.add_argument('-p', '--path', nargs="+", help="provide the path where the input files reside")
 
     args = parser.parse_args()
@@ -144,9 +143,15 @@ def main() :
     create_database_tables()
 
     if args.all or (args.asset_type and 'ev' in args.asset_type):
-        if args.drop:
-            delete_device_type(DeviceType.EV)
-        ev_from_file_to_db()
+        if args.drop and args.asset_type == 'ev':
+            print("NOT supported")
+            # delete_device_type(DeviceType.EV)
+        ev_from_file_to_db(DataSource.GO_E)
+    if args.all or (args.asset_type and 'ev-elaad' in args.asset_type):
+        if args.drop and args.asset_type == 'ev-elaad':
+            print("NOT supported")
+            # delete_device_type(DeviceType.EV)
+        ev_from_file_to_db(DataSource.ELAAD_AGG)
     if args.all or (args.asset_type and 'hp' in args.asset_type):
         if args.drop:
             delete_device_type(DeviceType.HP)
