@@ -11,7 +11,7 @@ import pandas as pd
 from experiment.experiment import Experiment
 from experiment.experiment_container import ExperimentContainer
 from experiment.experiment_filter import ExperimentFilter
-from experiment.experiment_loader import FileLoader
+from experiment.experiment_loader import ExperimentLoader
 
 BASE_DIR='data/hp/'
 
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     DAY = datetime(2020,1,15)
 
     # load_filter = ExperimentFilter().with_grout('9722')
-    all_experiments = FileLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments()
+    all_experiments = ExperimentLoader(baselines_dir=Path(BASELINES_DIR), shifted_dir=Path(SHIFTED_DIR)).load_experiments()
     
     plot: Plotting = Plotting()
 
