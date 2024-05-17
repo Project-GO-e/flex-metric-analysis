@@ -69,7 +69,7 @@ class Config:
     '''Start time of the congestion'''
     congestion_duration: int
     '''Duration of the congestion in amount of PTU (15min)'''
-    ev: Optional[EvConfig] = None
+    ev: Optional[List[EvConfig]] = None
     hp: Optional[HpConfig] = None
     hhp: Optional[HhpConfig] = None
     pv: Optional[PvConfig] = None
@@ -77,29 +77,29 @@ class Config:
     baseline_total_W: Optional[List[float]] = None
     '''The summed baseline in Watt of all devices in the scenario. This will only be used if individual asset type profiles are not provided'''
 
-    def all_baselines_available(self) -> bool:
-        baseline_available = True
-        for hp in self.hp.house_type:
-            if hp.baseline_total_W is None:
-                baseline_available = False
-        for hhp in self.hhp.house_type:
-            if hhp.baseline_total_W is None:
-                baseline_available = False
-        if self.ev.baseline_total_W is None:
-            baseline_available = False
-        return baseline_available
+    # def all_baselines_available(self) -> bool:
+    #     baseline_available = True
+    #     for hp in self.hp.house_type:
+    #         if hp.baseline_total_W is None:
+    #             baseline_available = False
+    #     for hhp in self.hhp.house_type:
+    #         if hhp.baseline_total_W is None:
+    #             baseline_available = False
+    #     if self.ev.baseline_total_W is None:
+    #         baseline_available = False
+    #     return baseline_available
 
-    def all_asset_amounts_available(self) -> bool:
-        amounts_available = True
-        for hp in self.hp.house_type:
-            if hp.amount is None:
-                amounts_available = False
-        for hhp in self.hp.house_type:
-            if hhp.amount is None:
-                amounts_available = False
-        if self.ev.amount is None:
-            amounts_available = False
-        return amounts_available
+    # def all_asset_amounts_available(self) -> bool:
+    #     amounts_available = True
+    #     for hp in self.hp.house_type:
+    #         if hp.amount is None:
+    #             amounts_available = False
+    #     for hhp in self.hp.house_type:
+    #         if hhp.amount is None:
+    #             amounts_available = False
+    #     if self.ev.amount is None:
+    #         amounts_available = False
+    #     return amounts_available
 
     def validate_profile_lengths(self) -> Tuple[bool, str]:
         all_lengths_valid = True
@@ -116,9 +116,11 @@ class Config:
                     all_lengths_valid = False
                     non_valid_device_baselines.append("HHP" + hhp.name)
         
-        if self.ev and self.ev.baseline_total_W and len(self.ev.baseline_total_W) is not self.congestion_duration:
-            all_lengths_valid = False
-            non_valid_device_baselines.append("EV")
+        if self.ev:
+            for e in self.ev:
+                if e.baseline_total_W and len(e.baseline_total_W) is not self.congestion_duration:
+                    all_lengths_valid = False
+                    non_valid_device_baselines.append("EV")
         
         if not all_lengths_valid:
             msg = "The following device types have a different profile length than the congestion duration: " + ", ".join(non_valid_device_baselines)

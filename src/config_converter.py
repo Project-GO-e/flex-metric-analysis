@@ -1,5 +1,4 @@
 
-from datetime import datetime, time
 from pathlib import Path
 
 import pandas as pd
@@ -12,10 +11,13 @@ class ExcelConverter():
         self.config_file = config_file        
 
     def validate(self, assets_df: pd.DataFrame) -> None:
-        assert len(assets_df.query('type=="ev"')) == 1, "Only one ev row allowed"
-        assert len(assets_df.query('type=="pv"')) == 1, "Only one pv row allowed"
-        assert len(assets_df.query('type=="hp"')['typical_day'].unique()) == 1, "Use the same typical day for all heat pump configurations"
-        assert len(assets_df.query('type=="baseload"')['typical_day'].unique()) == 1, "Use the same typical day for all baseload configurations"
+        # assert len(assets_df.query('type=="ev"')) == 1, "Only one ev row allowed"
+        if not assets_df.query('type=="pv"').empty:
+            assert len(assets_df.query('type=="pv"')) == 1, "Only one pv row allowed"
+        if not assets_df.query('type=="hp"').empty:
+            assert len(assets_df.query('type=="hp"')['typical_day'].unique()) == 1, "Use the same typical day for all heat pump configurations"
+        if not assets_df.query('type=="baseload"').empty:
+            assert len(assets_df.query('type=="baseload"')['typical_day'].unique()) == 1, "Use the same typical day for all baseload configurations"
         
     def convert(self) -> Config:
         assets_df = pd.read_excel(self.config_file, sheet_name="assets", index_col=0)
@@ -31,7 +33,8 @@ class ExcelConverter():
         for i,r in assets_df.iterrows():
             if r['type'] == 'ev':
                 #TODO: check if baseline provided, then load and add instead of amount
-                ev_conf = EvConfig(typical_day=r['typical_day'], pc4=r['group'], amount=r['amount'])
+                ev_conf = [] if ev_conf is None else ev_conf
+                ev_conf.append(EvConfig(typical_day=r['typical_day'], pc4=r['group'], amount=r['amount']))
             elif r['type'] == 'hp':
                 if hp_conf is None:
                     hp_conf = HpConfig(typical_day=r['typical_day'], house_type=[])
