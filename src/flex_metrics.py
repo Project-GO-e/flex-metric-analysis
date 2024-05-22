@@ -7,7 +7,6 @@ from typing import Dict, List, NamedTuple
 
 import numpy as np
 import pandas as pd
-from dataclass_binder import Binder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -21,6 +20,7 @@ class FlexAssetProfiles(NamedTuple):
     ev: List[float]
     hp: Dict[str, List[float]]
     hhp: Dict[str, List[float]]
+
 
 
 class FlexMetrics():
@@ -101,7 +101,7 @@ class FlexMetrics():
         if self.conf.hhp:
             for hhp in self.conf.hhp.house_type:
                 baselines[hhp.name] = np.array(hhp.baseline_total_W) if hhp.baseline_total_W else baselines_db['hhp-' + hhp.name].values
-                results["flex_hhp_" + hp.name] = np.array(flex_metrics.hhp[hhp.name]) * baselines[hhp.name]
+                results["flex_hhp_" + hhp.name] = np.array(flex_metrics.hhp[hhp.name]) * baselines[hhp.name]
         
         ev_baseline = results.filter(regex="flex_ev_")
         if reduce_to_device_type and len(ev_baseline.columns) > 0:
