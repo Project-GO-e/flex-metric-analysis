@@ -100,7 +100,7 @@ class FlexMetrics():
 
         if self.conf.non_flexible_load:
             non_flex_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
-            non_flex_baselines = baselines_db['sjv']
+            non_flex_baselines['non_flex'] = baselines_db['sjv']
             device_results.append(DeviceResults(DeviceType.SJV, non_flex_baselines))
 
         if self.conf.hp:
