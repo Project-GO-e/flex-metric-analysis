@@ -14,5 +14,8 @@ class DeviceType(Enum):
     def from_string(cls, device_type: str) -> DeviceType:
         return cls[device_type.upper()]
 
+    def is_flexible(self) -> bool:
+        return self in [DeviceType.EV, DeviceType.HP, DeviceType.HHP]
+    
     def __str__(self) -> str:
         return self.name

@@ -7,8 +7,10 @@ from dataclass_binder import Binder
 
 from config_converter import ExcelConverter
 from db.data_not_found_exception import DataNotFoundException
+from experiment.device_type import DeviceType
 from flex_metric_config import Config
 from flex_metrics import FlexMetrics
+from result_writer import DirectoryResultWriter
 from util.cli_wizard import CliWizard
 
 DB_FILE: Final[str]="flex-metrics.db"
@@ -38,7 +40,8 @@ def parse_args() -> CliArgs:
 
 def flex_metrics_calculation(db_path: Path, conf: Config):
     try:
-        FlexMetrics(conf, db_path).determine_flex_power(reduce_to_device_type=True).round(1).to_csv('out.csv', sep=';')
+        res = FlexMetrics(conf, db_path).determine_flex_power()
+        DirectoryResultWriter(res, [DeviceType.HHP, DeviceType.HP]).write()
     except DataNotFoundException as e:
         print("ERROR: " + str(e))
 
