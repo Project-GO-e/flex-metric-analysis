@@ -5,12 +5,12 @@ from typing import Final
 
 from dataclass_binder import Binder
 
-from config_converter import ExcelConverter
 from db.data_not_found_exception import DataNotFoundException
 from experiment.device_type import DeviceType
 from flex_metric_config import Config
 from flex_metrics import FlexMetrics
 from result_writer import DirectoryResultWriter
+from util.config_converter import ExcelConverter
 from util.cli_wizard import CliWizard
 
 DB_FILE: Final[str]="flex-metrics.db"
