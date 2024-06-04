@@ -6,33 +6,35 @@ from flex_metric_config import BaseloadConfig, Config, EvConfig, HhpConfig, Hous
 
 
 class ExcelConverter():
+    '''
+    Helper class to read an Excel file with the scenario configuration and convert it to a Config object
+    '''
     
     def __init__(self, config_file: Path) -> None:
         self.config_file = config_file        
+        self.assets_df = pd.read_excel(self.config_file, sheet_name="assets", index_col=0)
+        self.cong_df = pd.read_excel(self.config_file, sheet_name="congestion", index_col=0, header=None)
+        self.validate()
 
-    def validate(self, assets_df: pd.DataFrame) -> None:
+    def validate(self) -> None:
         # assert len(assets_df.query('type=="ev"')) == 1, "Only one ev row allowed"
-        if not assets_df.query('type=="pv"').empty:
-            assert len(assets_df.query('type=="pv"')) == 1, "Only one pv row allowed"
-        if not assets_df.query('type=="hp"').empty:
-            assert len(assets_df.query('type=="hp"')['typical_day'].unique()) == 1, "Use the same typical day for all heat pump configurations"
-        if not assets_df.query('type=="baseload"').empty:
-            assert len(assets_df.query('type=="baseload"')['typical_day'].unique()) == 1, "Use the same typical day for all baseload configurations"
-        assert assets_df['group'].is_unique, "You have a duplicate group value in your asset config tab. Groups values should be unique"
-
+        if not self.assets_df.query('type=="pv"').empty:
+            assert len(self.assets_df.query('type=="pv"')) == 1, "Only one pv row allowed"
+        if not self.assets_df.query('type=="hp"').empty:
+            assert len(self.assets_df.query('type=="hp"')['typical_day'].unique()) == 1, "Use the same typical day for all heat pump configurations"
+        if not self.assets_df.query('type=="baseload"').empty:
+            assert len(self.assets_df.query('type=="baseload"')['typical_day'].unique()) == 1, "Use the same typical day for all baseload configurations"
+        assert self.assets_df['group'].is_unique, "You have a duplicate group value in your asset config tab. Groups values should be unique"
         
     def convert(self) -> Config:
-        assets_df = pd.read_excel(self.config_file, sheet_name="assets", index_col=0)
-        cong_df = pd.read_excel(self.config_file, sheet_name="congestion", index_col=0, header=None)
-        cong_start = cong_df.loc['start'].iloc[0]
-        cong_dur = cong_df.loc['duration'].iloc[0]
-        self.validate(assets_df=assets_df)
+        cong_start = self.cong_df.loc['start'].iloc[0]
+        cong_dur = self.cong_df.loc['duration'].iloc[0]
         ev_conf = None
         hp_conf = None
         pv_conf = None
         sjv_conf = None
         hhp_conf = None
-        for i,r in assets_df.iterrows():
+        for i,r in self.assets_df.iterrows():
             if r['type'] == 'ev':
                 #TODO: check if baseline provided, then load and add instead of amount
                 ev_conf = [] if ev_conf is None else ev_conf

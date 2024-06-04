@@ -14,13 +14,13 @@ from db.baselines_dao import BaselineDao
 from db.flex_devices_dao import FlexDevicesDao
 from experiment.experiment_description import DeviceType
 from flex_metric_config import Config
+from flex_metrics_results import DeviceResults, Results
 
 
-class FlexAssetProfiles(NamedTuple):
-    ev: List[float]
+class FlexMetricProfiles(NamedTuple):
+    ev: Dict[str, List[float]]
     hp: Dict[str, List[float]]
     hhp: Dict[str, List[float]]
-
 
 
 class FlexMetrics():
@@ -33,7 +33,7 @@ class FlexMetrics():
             self.engine = create_engine(f"sqlite:///{db_file}", echo=False)
         self.conf = config
 
-    def fetch_flex_metrics(self) -> FlexAssetProfiles:
+    def fetch_flex_metrics(self) -> FlexMetricProfiles:
         with Session(self.engine) as session:
             dao = FlexDevicesDao(session)
             ev_fm: Dict[str, List[float]] = {}
@@ -48,7 +48,7 @@ class FlexMetrics():
             if self.conf.hhp:
                 for hhp in self.conf.hhp.house_type:
                     hhp_fm[hhp.name] = self.conf.congestion_duration * [1]
-        return FlexAssetProfiles(ev_fm, hp_fm, hhp_fm)
+        return FlexMetricProfiles(ev_fm, hp_fm, hhp_fm)
     
     def fetch_baselines(self) -> pd.DataFrame:
         with Session(self.engine) as session:
@@ -75,48 +75,47 @@ class FlexMetrics():
         return baselines
     
 
-    def determine_flex_power(self, reduce_to_device_type: bool) -> pd.DataFrame:
+    def determine_flex_power(self) -> Results:
         flex_metrics = self.fetch_flex_metrics()
         cong_start_idx = int((datetime.combine(date(2020,1,1), self.conf.congestion_start) - datetime(2020,1,1)) / timedelta(minutes=15))
-        baselines_db = self.fetch_baselines()[cong_start_idx:cong_start_idx + self.conf.congestion_duration]
-        baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
-        results = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+        baselines_db = self.fetch_baselines()[cong_start_idx:cong_start_idx + self.conf.congestion_duration].reset_index()
+        device_results: List[DeviceResults] = []
         
         if self.conf.ev:
+            ev_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+            ev_flex_profiles = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
             for e in self.conf.ev:
-                baselines[f'ev-{e.pc4}'] = np.array(e.baseline_total_W) if e.baseline_total_W else baselines_db[f'ev-{e.pc4}'].values
-                results[f"flex_ev_{e.pc4}"] = np.array(flex_metrics.ev[e.pc4]) * baselines[f'ev-{e.pc4}']
+                #TODO: array from baseline_total_W should be dataframe
+                ev_baselines[e.pc4] = np.array(e.baseline_total_W) if e.baseline_total_W else baselines_db[f'ev-{e.pc4}']
+                ev_flex_profiles[e.pc4] = np.array(flex_metrics.ev[e.pc4]) * ev_baselines[e.pc4]
+            device_results.append(DeviceResults(DeviceType.EV, ev_baselines, ev_flex_profiles))
         
         if self.conf.pv:
-            baselines['pv'] = baselines_db['pv'].values
+            pv_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+            pv_baselines['pv'] = baselines_db['pv']
+            device_results.append(DeviceResults(DeviceType.PV, pv_baselines))
 
         if self.conf.non_flexible_load:
-            baselines['sjv'] = baselines_db['sjv'].values
+            non_flex_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+            non_flex_baselines['non_flex'] = baselines_db['sjv']
+            device_results.append(DeviceResults(DeviceType.SJV, non_flex_baselines))
 
         if self.conf.hp:
+            hp_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+            hp_flex_profiles = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
             for hp in self.conf.hp.house_type:
-                baselines[hp.name] = np.array(hp.baseline_total_W) if hp.baseline_total_W  else baselines_db['hp-' + hp.name].values
-                results["flex_hp_" + hp.name] = np.array(flex_metrics.hp[hp.name]) * baselines[hp.name]
+                #TODO: array from baseline_total_W should be dataframe
+                hp_baselines[hp.name] = np.array(hp.baseline_total_W) if hp.baseline_total_W  else baselines_db['hp-' + hp.name]
+                hp_flex_profiles[hp.name] = np.array(flex_metrics.hp[hp.name]) * hp_baselines[hp.name]
+            device_results.append(DeviceResults(DeviceType.HP, hp_baselines, hp_flex_profiles))
         
         if self.conf.hhp:
+            hhp_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
+            hhp_flex_profiles = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
             for hhp in self.conf.hhp.house_type:
-                baselines[hhp.name] = np.array(hhp.baseline_total_W) if hhp.baseline_total_W else baselines_db['hhp-' + hhp.name].values
-                results["flex_hhp_" + hhp.name] = np.array(flex_metrics.hhp[hhp.name]) * baselines[hhp.name]
+                #TODO: array from baseline_total_W should be dataframe
+                hhp_baselines[hhp.name] = np.array(hhp.baseline_total_W) if hhp.baseline_total_W else baselines_db['hhp-' + hhp.name]
+                hhp_flex_profiles[hhp.name] = np.array(flex_metrics.hhp[hhp.name]) * hhp_baselines[hhp.name]
+            device_results.append(DeviceResults(DeviceType.HHP, hhp_baselines, hhp_flex_profiles))
         
-        ev_baseline = results.filter(regex="flex_ev_")
-        if reduce_to_device_type and len(ev_baseline.columns) > 0:
-            results.drop(list(ev_baseline), axis=1, inplace=True)
-            results["flex_ev"] = ev_baseline.sum(axis=1)
-
-        hp_baseline = results.filter(regex="flex_hp_")
-        if reduce_to_device_type and len(hp_baseline.columns) > 0:
-            results.drop(list(hp_baseline), axis=1, inplace=True)
-            results["flex_hp"] = hp_baseline.sum(axis=1)
-
-        hhp_baseline = results.filter(regex="flex_hhp_")
-        if reduce_to_device_type and len(hhp_baseline.columns) > 0:
-            results.drop(list(hhp_baseline), axis=1, inplace=True)
-            results["flex_hhp"] = hhp_baseline.sum(axis=1)
-
-        results['baseline'] = baselines.sum(axis=1)
-        return results
+        return Results(cong_start=self.conf.congestion_start, cong_duration=self.conf.congestion_duration, results=device_results)
