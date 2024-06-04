@@ -1,6 +1,8 @@
 from calendar import month_name
 from collections import namedtuple
-from typing import List
+from typing import Dict, List
+
+from typing import List, Literal
 
 import numpy as np
 import pandas as pd
@@ -13,21 +15,26 @@ SUNRISE_SUNSET_FILE = 'sunset-sunrise.csv'
 
 GmContext = namedtuple("Context", "day_type month_idx, gm_type")
 
+PowerRange = namedtuple("PowerRange", "start end nr_steps" )
+
+def calc_power_delta(power_range: PowerRange):
+    return (power_range.end - power_range.start) / (power_range.nr_steps - 1)
+
 def readGM(filename): 
     return pd.read_excel(filename, header=0)
 
-
-def find_zeroindex(distr_, distr_power_range, power_delta): 
-    zeroindex = int(-distr_power_range[0]/power_delta)
+def find_zeroindex(distr_, distr_power_range: PowerRange, power_delta):
+    # This assumes the power range to be symmetrical around 0
+    # TODO: make more generic
+    # TODO: remove power_delta argument as it can be obtrained from power_range
+    zeroindex = int(-distr_power_range.start / power_delta)
 
     if zeroindex < 0 : zeroindex = 0
 
     return zeroindex
 
-
 def normalize(d_, delta):
     return d_/(d_.sum()*delta)
-
 
 def get_expectation_value(distribution, pr_min, pr_max, pdelta):
     sum = 0
@@ -39,7 +46,6 @@ def get_expectation_value(distribution, pr_min, pr_max, pdelta):
 
     return sum/weight
 
-
 def get_daily_sjv_expectation_values(sjv_type, df, day_type, month) -> List[float]:
     expectation_values = []
     for i in range(1,97):
@@ -47,13 +53,19 @@ def get_daily_sjv_expectation_values(sjv_type, df, day_type, month) -> List[floa
     return expectation_values
 
 
-def get_daily_pv_expectation_values(pv_type, df, sunrise_set, day_type, month) -> List[float]:
-    return list(map(lambda x: get_single_PV_Expectaction_Value(pv_type, df, sunrise_set, GmContext(day_type, month, x), 1), range(1, 97)))
+# def get_daily_pv_expectation_values(pv_type, df, sunrise_set, day_type, month) -> List[float]:
+#     return list(map(lambda x: get_single_PV_pdf(pv_type, df, sunrise_set, GmContext(day_type, month, x), 1), range(1, 97)))
     # expectation_values = []
     # for i in range(1, 97):
     #     expectation_values.append(get_single_PV_Expectaction_Value(pv_type, df, (day_type, month, i),1))
     # return expectation_values
 
+# def get_pv_pdf_day_profile(pv_type, df, sunrise_set, day_type, month ):
+#     expectation_values = []
+#     power_range = PowerRange(-6.0, 6.0, 121)
+#     for i in range(1, 97):
+#         expectation_values.append(get_pv_pdf(pv_type, df, sunrise_set (day_type, month, i),1), power_range)
+#     return expectation_values
 
 def get_single_SJV_Expectation_value(SJV_Type, df, context):
     dagtype = context[0]
@@ -62,6 +74,7 @@ def get_single_SJV_Expectation_value(SJV_Type, df, context):
 
     power_delta_ = 0.1
     # note: range below is specific for the SJV types.. adapt with care... the power_delta (see below) should match exactly with all ranges
+    # TODO: replace with PowerRange named tuple to improve readibility
     power_range = np.array([-6.0, 6.0, 121])
     
     gmrange = np.linspace(power_range[0],power_range[1],int(power_range[2]))
@@ -154,14 +167,16 @@ def get_single_SJV_Expectation_value(SJV_Type, df, context):
 
     return expection_value
 
-def get_single_PV_Expectaction_Value(GMname, df, sunrise_set, context, installed_power_):
+def get_pv_pdf(GMname, df, sunrise_set, context, installed_power_, power_range: PowerRange) -> np.ndarray:
+    # FIXME: we apply scaling after creating the PDF with installed_power of 1 kW.
+    # The problem is that it gives other results as using the desired installed power before the PDF is created.
+    # Differences aren't huge though.
+
     dagtype = context[0]
     maand = context[1]
     kwartier = context[2]
 
-    pdelta = 0.1
-    # note: range below is specific for the SJV types.. adapt with care... the power_delta (see below) should match exactly with all ranges
-    power_range = np.array([-6.0, 6.0, 121])
+    pdelta = calc_power_delta(power_range)
 
     # since PV has 100% correlation, if there would be more nodes, 
     # than all powers should be multiplied by the numner of nodes, 
@@ -173,12 +188,9 @@ def get_single_PV_Expectaction_Value(GMname, df, sunrise_set, context, installed
 
     GMparms = df.loc[df['Name'] == GMname]
 
-    pv_power_range = power_range.copy()
-    pv_power_range[0]= power_range[0]*nodes
-    pv_power_range[1]= power_range[1]*nodes
-    pv_power_range[2]= (power_range[2]-1)*nodes+1
+    pv_power_range : PowerRange = PowerRange(power_range.start*nodes, power_range.end*nodes, (power_range.nr_steps - 1) * nodes + 1)
 
-    gmrange = np.linspace(pv_power_range[0],pv_power_range[1],int(pv_power_range[2]))
+    gmrange = np.linspace(pv_power_range.start, pv_power_range.end, int(pv_power_range.nr_steps))
  
     trendday = GMparms["Trend"+dagtype+"["+str(kwartier)+"]"].values[0]
     trendmonth = GMparms["TrendMonth["+str(maand)+"]"].values[0]
@@ -190,12 +202,11 @@ def get_single_PV_Expectaction_Value(GMname, df, sunrise_set, context, installed
     distnorm = stats.norm(loc = gm_average , scale=gm_std)
     prob_day = GMparms[dagtype+"[1,"+str(kwartier)+"]"].values[0]
     prob_month = GMparms["Month[1,"+str(maand)+"]"].values[0]
-    prob_time = context[2] >= sunrise_set.loc[month_name[context[1]].lower()]['sunrise'] and context[2] <= sunrise_set.loc[month_name[context[1]].lower()]['sunset']
-    probactive = prob_day*prob_month * prob_time
+    prob_time = context[2] >= sunrise_set.loc[month_name[context[1]].lower()]['sunrise'] and \
+                context[2] <= sunrise_set.loc[month_name[context[1]].lower()]['sunset']
+    probactive = min(prob_day * prob_month * prob_time, 1)
 
-    if probactive>1 : probactive = 1
-
-    distnorm_pdf = distnorm.pdf(gmrange)
+    distnorm_pdf = distnorm.pdf(gmrange)    
 
     zeroindex = find_zeroindex (distnorm_pdf, pv_power_range, pdelta)
 
@@ -207,30 +218,40 @@ def get_single_PV_Expectaction_Value(GMname, df, sunrise_set, context, installed
     distnorm_pdf = probactive * distnorm_pdf
 
     # chance that no sun is shining, hence 0 power
-    distnorm_pdf[zeroindex] = (1-probactive)/pdelta
+    distnorm_pdf[zeroindex] = (1-probactive) / pdelta
+    
+    return distnorm_pdf
+    
 
-    return get_expectation_value(distnorm_pdf, power_range[0], power_range[1], pdelta)
-
-
-
-def main() :
-    buurtdf = readGM(CONFIG_DIR + BUURT_FILE)
+def pv_pdf_day_profile(daytype: Literal["Worday", "Weekend"], month: int, power_range: PowerRange) -> List[np.ndarray]:
     GMdf = readGM(CONFIG_DIR + GM_TYPE_FILE)
-
     sunset_rise = pd.read_csv(CONFIG_DIR + SUNRISE_SUNSET_FILE, delimiter=';', index_col=0)
+    day_profile = []
+    for i in range(1,97):
+        # Daytype, month, PTU of the day
+        context = (daytype, month, i)
+        day_profile.append(get_pv_pdf("PV", GMdf, sunset_rise, context, 1, power_range))
+    return day_profile
 
+def test_sjv():
+    GMdf = readGM(CONFIG_DIR + GM_TYPE_FILE)
+    
     # Daytype, month, PTU of the day
-    context = ("Workday", 1, 48)
+    context = ("Workday", 1, 1)
+    get_single_SJV_Expectation_value("sjv500", GMdf, context)
 
-    for i in range(len(buurtdf)):
-        node = buurtdf.loc[i]
-        if (node.loc['GMtype'] == 'SJV'):
-            expectation_value = get_single_SJV_Expectation_value(node.loc['GMname'], GMdf, context)
-            print(node.loc['GMtype'] + "/" + node.loc['GMname'] + " - Expectation value: " + str(expectation_value))
-        elif (node.loc['GMtype'] == 'PV'):
-            expectation_value = get_single_PV_Expectaction_Value(node.loc['GMname'], GMdf, sunset_rise, context, node.loc['installed_power'])
-            print(node.loc['GMtype'] + "/" + node.loc['GMname'] + " - Expectation value: " + str(expectation_value))
+
+def pv_monthly_profiles():
+    pr = PowerRange(-6, 6, 121)
+    pdelta = calc_power_delta(pr)
+    mean_day_profiles: Dict = {}
+    for m in range(1,13):
+        print(m)
+        pdf_day_profile = pv_pdf_day_profile("Workday", m, pr)
+        mean_day_profiles[m] = map(lambda x: get_expectation_value(x, pr.start, pr.end, pdelta), pdf_day_profile)
+    pd.DataFrame(mean_day_profiles).to_csv("pv_after_refactor-3.csv", sep=';')
 
 
 if __name__ == "__main__":
-    main()
+    # test_sjv()
+    pv_monthly_profiles()

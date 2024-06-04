@@ -7,7 +7,6 @@ from typing import Dict, List, NamedTuple
 
 import numpy as np
 import pandas as pd
-from dataclass_binder import Binder
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 

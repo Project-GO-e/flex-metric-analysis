@@ -1,7 +1,7 @@
 
 from datetime import time
 
-from sqlalchemy import BLOB, Column, Time
+from sqlalchemy import BLOB, Column, PickleType, Time
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from db.type_decorators import MappedEnum
@@ -43,5 +43,17 @@ class Baseline(Base):
     device_type: Mapped[DeviceType] = Column(MappedEnum(DeviceType))
     typical_day: Mapped[str]
     group: Mapped[str]
-    mean_power: Mapped[BLOB] = Column(BLOB)
-    p95: Mapped[BLOB] = Column(BLOB)
+    mean_power: Mapped[BLOB] = Column(BLOB)  
+
+
+class BaselinePdf(Base):
+    '''
+    Python model of the database table that contians pdfs of baselines.
+    '''
+    __tablename__ = "pdf_baseline"
+
+    id: Mapped[str] = mapped_column(primary_key=True)
+    device_type: Mapped[DeviceType] = Column(MappedEnum(DeviceType))
+    typical_day: Mapped[str]
+    group: Mapped[str]
+    pdf: Mapped[PickleType] = Column(PickleType)
