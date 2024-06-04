@@ -24,6 +24,7 @@ class ExcelConverter():
             assert len(self.assets_df.query('type=="hp"')['typical_day'].unique()) == 1, "Use the same typical day for all heat pump configurations"
         if not self.assets_df.query('type=="baseload"').empty:
             assert len(self.assets_df.query('type=="baseload"')['typical_day'].unique()) == 1, "Use the same typical day for all baseload configurations"
+        assert self.assets_df['group'].is_unique, "You have a duplicate group value in your asset config tab. Groups values should be unique"
         
     def convert(self) -> Config:
         cong_start = self.cong_df.loc['start'].iloc[0]
