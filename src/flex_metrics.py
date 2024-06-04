@@ -79,10 +79,8 @@ class FlexMetrics():
         flex_metrics = self.fetch_flex_metrics()
         cong_start_idx = int((datetime.combine(date(2020,1,1), self.conf.congestion_start) - datetime(2020,1,1)) / timedelta(minutes=15))
         baselines_db = self.fetch_baselines()[cong_start_idx:cong_start_idx + self.conf.congestion_duration].reset_index()
-        # baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
-        # results = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
-        
         device_results: List[DeviceResults] = []
+        
         if self.conf.ev:
             ev_baselines = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
             ev_flex_profiles = pd.DataFrame(index=pd.RangeIndex(self.conf.congestion_duration))
@@ -90,7 +88,6 @@ class FlexMetrics():
                 #TODO: array from baseline_total_W should be dataframe
                 ev_baselines[e.pc4] = np.array(e.baseline_total_W) if e.baseline_total_W else baselines_db[f'ev-{e.pc4}']
                 ev_flex_profiles[e.pc4] = np.array(flex_metrics.ev[e.pc4]) * ev_baselines[e.pc4]
-            print(ev_baselines)
             device_results.append(DeviceResults(DeviceType.EV, ev_baselines, ev_flex_profiles))
         
         if self.conf.pv:
