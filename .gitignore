@@ -1,6 +1,7 @@
 .venv/
 **/__pycache__/
 data/
+results/
 
 .vscode
 *.code-workspace
