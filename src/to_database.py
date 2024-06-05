@@ -34,7 +34,7 @@ SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
 JRC_PVGIS_FILE=BASE_PATH / 'jrc-pvgis-2015-residential.csv'
 
-engine = create_engine("sqlite:///test.db", echo=False)
+engine = create_engine("sqlite:///flex-metrics.db", echo=False)
 
 
 def drop_database_tables():
