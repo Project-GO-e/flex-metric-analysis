@@ -1,10 +1,7 @@
 from argparse import ArgumentParser
-from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
-
-import re
-from typing import List, NamedTuple
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -19,8 +16,8 @@ from experiment.experiment_description import DeviceType, ExperimentDescription
 from experiment.experiment_filter import ExperimentFilter
 
 from experiment.experiment_loader import DataSource, ExperimentLoader
-from util.conflex import (GmContext, get_daily_pv_expectation_values,
-                          get_daily_sjv_expectation_values, readGM)
+from flex_metric_config import DEFAULT_PV_GROUP
+from util.conflex import (GmContext, get_daily_sjv_expectation_values, readGM)
 
 BASE_PATH=Path('data')
 
@@ -35,7 +32,9 @@ HHP_BASELINES=BASE_PATH / 'hhp/baselines/'
 
 SJV_PV_GM_DIR=BASE_PATH / 'SJV-PV-GM-input'
 
-engine = create_engine("sqlite:///flex-metrics.db", echo=False)
+JRC_PVGIS_FILE=BASE_PATH / 'jrc-pvgis-2015-residential.csv'
+
+engine = create_engine("sqlite:///test.db", echo=False)
 
 
 def drop_database_tables():
@@ -91,23 +90,42 @@ def hhp_from_file_to_db():
         print(f)
         if f.suffix == '.csv':
             df_baseline = pd.read_csv(f, sep=';', decimal=',', index_col=0, parse_dates=True)
+            for month_idx in range(1,13):            
+                df_month: pd.DataFrame = df_baseline.loc[df_baseline.index.month == month_idx]
+                df_month_w_tod: pd.DataFrame = df_month.copy()
+                df_month_w_tod['Time'] = df_month_w_tod.index.time
+                df_month_avg: pd.DataFrame = df_month_w_tod.groupby('Time').mean()
+                month = datetime(2020, month_idx, 1).strftime('%B')
+                group_elements: List[str] = f.stem.removeprefix("baselines+").split('+')
+                group = f"{group_elements[0]}+{group_elements[1]}+{group_elements[2].removeprefix('status')}".replace(' ', '_').lower()
+                with Session(engine) as session:
+                    doa = BaselineDao(session)
+                    doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_avg".lower(), group=group, mean_power=df_month_avg.mean(axis=1).round(2))
+                    doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_15th".lower(), group=group, mean_power=df_month.loc[df_month.index.day == 15].mean(axis=1))
         else:
             print(f"Warning: cannot load file: {f}")
         
+        
+def jrc_pvgis_file_to_db():
+    print("Writing pv profiles based on jrc pvgis to database...")
+    if JRC_PVGIS_FILE.suffix == '.csv':    
+        df_baseline = pd.read_csv(JRC_PVGIS_FILE, sep=';', index_col=0, header=0, parse_dates=True)
+        df_baseline *= 0.86 # apply 14% system losses (cable, inverter, dust, degration etc.)
+        df_baseline = df_baseline.tz_convert("Europe/Amsterdam")
+        df_baseline = df_baseline.resample("15min").interpolate()
         for month_idx in range(1,13):            
             df_month: pd.DataFrame = df_baseline.loc[df_baseline.index.month == month_idx]
             df_month_w_tod: pd.DataFrame = df_month.copy()
             df_month_w_tod['Time'] = df_month_w_tod.index.time
-            df_month_avg: pd.DataFrame = df_month_w_tod.groupby('Time').mean()
+            df_month_avg: pd.DataFrame = df_month_w_tod.groupby('Time').mean() * -1
             month = datetime(2020, month_idx, 1).strftime('%B')
-            group_elements: List[str] = f.stem.removeprefix("baselines+").split('+')
-            group = f"{group_elements[0]}+{group_elements[1]}+{group_elements[2].removeprefix('status')}".replace(' ', '_').lower()
+            group = DEFAULT_PV_GROUP
             with Session(engine) as session:
                 doa = BaselineDao(session)
-                doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_avg".lower(), group=group, mean_power=df_month_avg.mean(axis=1).round(2))
-                doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_15th".lower(), group=group, mean_power=df_month.loc[df_month.index.day == 15].mean(axis=1))
-        
-    
+                doa.save(device_type=DeviceType.PV, typical_day=month.lower(), group=group, mean_power=df_month_avg.mean(axis=1))
+    else: 
+         print(f"Warning: cannot load input file: {JRC_PVGIS_FILE}")
+
 def gm_types():
     gm_df = readGM(SJV_PV_GM_DIR / 'GM-types GO-e.xlsx')
     sunset_rise = pd.read_csv(SJV_PV_GM_DIR / 'sunset-sunrise.csv', delimiter=';', index_col=0)
@@ -126,23 +144,24 @@ def gm_types():
             group = gmc.gm_type
             device_type = DeviceType.SJV
             typical_day=f"{month}_{gmc.day_type}".lower()
+            with Session(engine) as session:
+                doa = BaselineDao(session)
+                doa.save(device_type=device_type, typical_day=typical_day, group=group.lower(), mean_power=expectation_value)
         if gmc.gm_type.startswith('PV'):
             # It seems that the profiles are normalized to 1, so no need to scale
-            expectation_value = get_daily_pv_expectation_values(gmc.gm_type, gm_df, sunset_rise, gmc.day_type, gmc.month_idx)
-            group = 'pv'
-            device_type = DeviceType.PV
-            typical_day=f"{month}".lower()
+            # expectation_value = get_daily_pv_expectation_values(gmc.gm_type, gm_df, sunset_rise, gmc.day_type, gmc.month_idx)
+            # group = 'pv'
+            # device_type = DeviceType.PV
+            # typical_day=f"{month}".lower()
+            print("Skipping PV because the PV profiles are not so good. We use the profiles from the JRC pvgis instead.")
         print(f"{gmc.gm_type} - {month} - {gmc.day_type}")
 
-        with Session(engine) as session:
-            doa = BaselineDao(session)
-            doa.save(device_type=device_type, typical_day=typical_day, group=group.lower(), mean_power=expectation_value)
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
     parser.add_argument('-d', '--drop', action='store_true', help="delete data before write. if combined with --all, all data is dropped from the database. if combined with --asset_type, only data for those assets is deleted")
     parser.add_argument('-a', '--all', action="store_true", help="write data for all asset types")
-    parser.add_argument('-t', '--asset_type', choices=['ev', 'hp', 'sjv-pv', 'hhp'], nargs="+", help="select for which asset type data to write")
+    parser.add_argument('-t', '--asset_type', choices=['ev', 'ev-elaad', 'hp', 'sjv', 'pv', 'hhp'], nargs="+", help="select for which asset type data to write")
 
     args = parser.parse_args()
 
@@ -150,23 +169,26 @@ def main() :
 
     if args.all or (args.asset_type and 'ev' in args.asset_type):
         if args.drop and args.asset_type == 'ev':
-            print("NOT supported")
+            print("NOT supported to delete EV data because there are multiple sources of the data")
             # delete_device_type(DeviceType.EV)
         ev_from_file_to_db(DataSource.GO_E)
     if args.all or (args.asset_type and 'ev-elaad' in args.asset_type):
         if args.drop and args.asset_type == 'ev-elaad':
-            print("NOT supported")
+            print("NOT supported to delete EV data because there are multiple sources of the data")
             # delete_device_type(DeviceType.EV)
         ev_from_file_to_db(DataSource.ELAAD_AGG)
     if args.all or (args.asset_type and 'hp' in args.asset_type):
         if args.drop:
             delete_device_type(DeviceType.HP)
         hp_from_file_to_db()
-    if args.all or (args.asset_type and 'sjv-pv' in args.asset_type):
+    if args.all or (args.asset_type and 'sjv' in args.asset_type):
         if args.drop:
-            delete_device_type(DeviceType.PV)
             delete_device_type(DeviceType.SJV)
         gm_types()
+    if args.all or (args.asset_type and 'pv' in args.asset_type):
+        if args.drop:
+            delete_device_type(DeviceType.PV)
+        jrc_pvgis_file_to_db()
     if args.all or (args.asset_type and 'hhp' in args.asset_type):
         if args.drop:
             delete_device_type(DeviceType.HHP)

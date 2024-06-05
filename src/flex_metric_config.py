@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import time
 from typing import List, Optional, Tuple
 
+DEFAULT_PV_GROUP: str = 'pv'
 
 @dataclass
 class EvConfig:
@@ -61,6 +62,8 @@ class PvConfig:
     '''Use a typical work/weekend day in month'''
     peak_power_W: float
     '''Peak power in Watt of all PV'''
+    profile_type: str = DEFAULT_PV_GROUP
+    '''Specify which profiles to use'''
 
 
 @dataclass

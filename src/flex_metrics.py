@@ -66,7 +66,8 @@ class FlexMetrics():
                 for hhp in self.conf.hhp.house_type:
                     baselines['hhp-' + hhp.name] = dao.get_baseline_mean(DeviceType.HHP, self.conf.hhp.typical_day, hhp.name).values * hhp.amount
             if self.conf.pv:
-                baselines['pv'] = np.array(dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, 'pv')) * self.conf.pv.peak_power_W
+                b = dao.get_baseline_mean(DeviceType.PV, self.conf.pv.typical_day, self.conf.pv.profile_type).values
+                baselines['pv']= b * self.conf.pv.peak_power_W
             if self.conf.non_flexible_load:
                 #TODO: get rid of hardcode length
                 baselines['sjv'] = 96 * [0]
