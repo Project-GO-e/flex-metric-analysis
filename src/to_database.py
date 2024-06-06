@@ -1,17 +1,15 @@
 from argparse import ArgumentParser
-from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 
-import re
-from typing import List, NamedTuple
+from typing import List
 
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from db.baselines_dao import BaselineDao
+from db.baselines_dao import BaselineDao, BaselinePdfDao
 from db.flex_devices_dao import FlexDevicesDao
 from db.models import Baseline, FlexMetric
 from experiment.experiment_container import ExperimentContainer
@@ -19,8 +17,7 @@ from experiment.experiment_description import DeviceType, ExperimentDescription
 from experiment.experiment_filter import ExperimentFilter
 
 from experiment.experiment_loader import DataSource, ExperimentLoader
-from util.conflex import (GmContext, get_daily_pv_expectation_values,
-                          get_daily_sjv_expectation_values, readGM)
+from util.conflex import (GmContext, PowerRange, calc_power_delta, get_daily_sjv_expectation_values, pv_pdf_day_profile, readGM)
 
 BASE_PATH=Path('data')
 
@@ -106,8 +103,7 @@ def hhp_from_file_to_db():
                 doa = BaselineDao(session)
                 doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_avg".lower(), group=group, mean_power=df_month_avg.mean(axis=1).round(2))
                 doa.save(device_type=DeviceType.HHP, typical_day=f"{month}_15th".lower(), group=group, mean_power=df_month.loc[df_month.index.day == 15].mean(axis=1))
-        
-    
+               
 def gm_types():
     gm_df = readGM(SJV_PV_GM_DIR / 'GM-types GO-e.xlsx')
     sunset_rise = pd.read_csv(SJV_PV_GM_DIR / 'sunset-sunrise.csv', delimiter=';', index_col=0)
@@ -128,6 +124,7 @@ def gm_types():
             typical_day=f"{month}_{gmc.day_type}".lower()
         if gmc.gm_type.startswith('PV'):
             # It seems that the profiles are normalized to 1, so no need to scale
+            # FIXME: this function doesn't exist anymore. Instead, get the expectation value from the PDF.
             expectation_value = get_daily_pv_expectation_values(gmc.gm_type, gm_df, sunset_rise, gmc.day_type, gmc.month_idx)
             group = 'pv'
             device_type = DeviceType.PV
@@ -137,6 +134,39 @@ def gm_types():
         with Session(engine) as session:
             doa = BaselineDao(session)
             doa.save(device_type=device_type, typical_day=typical_day, group=group.lower(), mean_power=expectation_value)
+
+def pv_sjv_pdf_to_db():
+    # TODO: get rid of these hardcoded path here:
+    gm_df = readGM(SJV_PV_GM_DIR / 'GM-types GO-e.xlsx')
+    sunset_rise = pd.read_csv(SJV_PV_GM_DIR / 'sunset-sunrise.csv', delimiter=';', index_col=0)
+
+    gm_types = ["sjv500", "sjv1000", "sjv1500", "sjv2000", "sjv2500", "sjv3000", "sjv3500", "sjv4000", "sjv4500", "sjv5000", "sjv6000", "sjv7000", "sjv8000", "sjv9000", "sjv10000", "sjv15000", "PV"]
+    day_types = ["Workday", "Weekend"]
+
+    gm_context = [GmContext(day_type, month_idx, t) for day_type in day_types for month_idx in range(1, 13) for t in gm_types]
+        
+    for gmc in gm_context:
+        group: str
+        month = datetime(2020, gmc.month_idx, 1).strftime('%B')
+        # if gmc.gm_type.startswith('sjv'):
+        #     # Convert expectation values from kW to W
+        #     expectation_value = np.array(get_daily_sjv_expectation_values(gmc.gm_type, gm_df, gmc.day_type, gmc.month_idx)) * 1000
+        #     group = gmc.gm_type
+        #     device_type = DeviceType.SJV
+        #     typical_day=f"{month}_{gmc.day_type}".lower()
+        if gmc.gm_type.startswith('PV'):
+            # It seems that the profiles are normalized to 1, so no need to scale
+            power_range = PowerRange(-6, 6, 121)
+            pdf_day_profile = pv_pdf_day_profile(gmc.day_type, gmc.month_idx, power_range)
+            pdelta = calc_power_delta(power_range)
+            group = 'pv'
+            device_type = DeviceType.PV
+            typical_day=f"{month}".lower()
+            print(f"{gmc.gm_type} - {month} - {gmc.day_type}")
+
+            with Session(engine) as session:
+                doa = BaselinePdfDao(session)
+                doa.save(device_type=device_type, typical_day=typical_day, group=group.lower(), pdfs=Pdfs(metadata_start=power_range.start, metadata_step=pdelta, pdfs=pdf_day_profile))
 
 def main() :
     parser = ArgumentParser(prog="FlexMetricDatabaseWriter", description="Helper program to fill the data base for flex metrics lookup" )
@@ -166,7 +196,7 @@ def main() :
         if args.drop:
             delete_device_type(DeviceType.PV)
             delete_device_type(DeviceType.SJV)
-        gm_types()
+        pv_sjv_pdf_to_db()
     if args.all or (args.asset_type and 'hhp' in args.asset_type):
         if args.drop:
             delete_device_type(DeviceType.HHP)
